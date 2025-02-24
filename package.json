@@ -1,0 +1,58 @@
+{
+    "name": "template-react-ts",
+    "description": "A Phaser 3 TypeScript project template that demonstrates React communication and uses Vite for bundling.",
+    "version": "1.0.3",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/phaserjs/template-react-ts.git"
+    },
+    "author": "Phaser Studio <support@phaser.io> (https://phaser.io/)",
+    "license": "MIT",
+    "licenseUrl": "http://www.opensource.org/licenses/mit-license.php",
+    "bugs": {
+        "url": "https://github.com/phaserjs/template-react-ts/issues"
+    },
+    "homepage": "https://github.com/phaserjs/template-react-ts#readme",
+    "keywords": [
+        "phaser",
+        "phaser3",
+        "react",
+        "vite",
+        "typescript"
+    ],
+    "scripts": {
+        "dev": "node log.js dev & vite --config vite/config.dev.mjs",
+        "build": "node log.js build & vite build --config vite/config.prod.mjs",
+        "dev-nolog": "vite --config vite/config.dev.mjs",
+        "build-nolog": "vite build --config vite/config.prod.mjs"
+    },
+    "dependencies": {
+        "@tailwindcss/vite": "^4.0.7",
+        "dotenv": "^16.4.7",
+        "file-saver": "^2.0.5",
+        "phaser": "^3.88.2",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "react-toastify": "^11.0.3",
+        "uuid": "^11.1.0"
+    },
+    "devDependencies": {
+        "@types/file-saver": "^2.0.7",
+        "@types/node": "^22.13.4",
+        "@types/react": "^19.0.10",
+        "@types/react-dom": "^19.0.4",
+        "@types/uuid": "^10.0.0",
+        "@typescript-eslint/eslint-plugin": "^8.24.1",
+        "@typescript-eslint/parser": "^8.24.1",
+        "@vitejs/plugin-react": "^4.3.4",
+        "autoprefixer": "^10.4.20",
+        "eslint": "^9.20.1",
+        "eslint-plugin-react-hooks": "^5.1.0",
+        "eslint-plugin-react-refresh": "^0.4.19",
+        "tailwindcss": "^4.0.7",
+        "terser": "^5.39.0",
+        "typescript": "^5.7.3",
+        "vite": "^6.1.1"
+    },
+    "main": "log.js"
+}
