@@ -2,7 +2,7 @@
 import Phaser from "phaser";
 import { Player } from "../entities/Player";
 import { CONFIG } from "../config";
-import { PlayerData } from "../types/PlayerData";
+import { PlayerData } from "../types/GameTypes";
 import { playerDataManager } from "../managers/PlayerDataManager";
 import { ChunkManager } from "../managers/ChunkManager";
 import { EntityManager } from "../managers/EntityManager";
@@ -24,19 +24,19 @@ export class GameScene extends Phaser.Scene {
     };
 
     private minRenderDistance: number = 1; // should be devisible by 2
-    private maxRenderDistance: number = 8; 
-    
+    private maxRenderDistance: number = 8;
+
 
     private playerHitbox!: Phaser.GameObjects.Rectangle;
-   
+
     constructor() {
         super("GameScene");
-        this.chunkManager = new ChunkManager(this, this.player); 
-        this.entityManager = new EntityManager(this, this.chunkManager); 
+        this.chunkManager = new ChunkManager(this, this.player);
+        this.entityManager = new EntityManager(this, this.chunkManager);
         this.chunkManager.setEntityManager(this.entityManager);
 
-     
-    
+
+
     }
 
     preload() {
@@ -102,7 +102,7 @@ export class GameScene extends Phaser.Scene {
             b: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.B),
         };
 
-       
+
 
         // Sync with PlayerDataManager updates
         playerDataManager.on("playerDataUpdated", (updatedData: PlayerData) => {
@@ -126,7 +126,7 @@ export class GameScene extends Phaser.Scene {
         if (this.keys.p.isDown) this.exportMap();
         else if (Phaser.Input.Keyboard.JustDown(this.keys.plus)) this.adjustZoom(0.1);
         else if (Phaser.Input.Keyboard.JustDown(this.keys.minus)) this.adjustZoom(-0.1);
-        else if (Phaser.Input.Keyboard.JustDown(this.keys.b)){
+        else if (Phaser.Input.Keyboard.JustDown(this.keys.b)) {
             this.chunkManager.toggleChunkBorders();
             this.playerHitbox.setVisible(!this.playerHitbox.visible);
             this.entityManager.toggleHitboxes(this.chunkManager.showBorders); // Pass showBorders state
@@ -145,7 +145,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     private adjustZoom(delta: number) {
-        const newZoom = Phaser.Math.Clamp(this.cameras.main.zoom + delta, 2 / this.maxRenderDistance , 2 * this.minRenderDistance);
+        const newZoom = Phaser.Math.Clamp(this.cameras.main.zoom + delta, 2 / this.maxRenderDistance, 2 * this.minRenderDistance);
         this.cameras.main.setZoom(newZoom);
         this.chunkManager.updateChunks(this.player.getPos());
     }

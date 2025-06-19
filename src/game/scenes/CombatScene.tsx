@@ -1,7 +1,7 @@
 // CombatScene.tsx
 import Phaser from 'phaser';
 import { CombatManager } from '../managers/CombatManager';
-import { EnemyData, PlayerData } from '../types/PlayerData';
+import { EnemyData, PlayerData } from '../types/GameTypes';
 import { combatEvent } from '../EventBus';
 
 export default class CombatScene extends Phaser.Scene {
@@ -54,6 +54,6 @@ export default class CombatScene extends Phaser.Scene {
     shutdown() {
         // Optional: Cleanup all combatEvent listeners if scene is stopped externally
         combatEvent.removeAllListeners(); // Be cautious if other scenes use combatEvent
- 
+
     }
 }

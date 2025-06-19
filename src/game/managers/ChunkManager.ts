@@ -2,7 +2,7 @@
 import Phaser from "phaser";
 import { MapGenerator, Room } from "./MapGenerator";
 import { CONFIG } from "../config";
-import { PlayerData } from "../types/PlayerData";
+import { PlayerData } from "../types/GameTypes";
 import { playerDataManager } from "./PlayerDataManager";
 import { MapExporter } from "./MapExporter";
 import { Player } from "../entities/Player";
@@ -29,11 +29,11 @@ export class ChunkManager {
     private entityManager: EntityManager;
 
     public showBorders: boolean = false;
-    
+
     constructor(scene: Phaser.Scene, player: Player) {
         this.scene = scene;
         this.mapGenerator = new MapGenerator(this.chunkSize);
-        this.player = player 
+        this.player = player
     }
 
     hasChunks(): boolean {
@@ -59,7 +59,7 @@ export class ChunkManager {
         this.fullMapRooms.set(chunkKey, rooms);
 
         const room0 = rooms[0]
-        let startX =room0.centerX, startY = room0.centerY;
+        let startX = room0.centerX, startY = room0.centerY;
         playerDataManager.updatePlayerData({ position: { x: startX, y: startY } });
 
         // Add grid lines
@@ -177,12 +177,12 @@ export class ChunkManager {
         }
 
         // Spawn entities for every new chunk
-        if(this.entityManager){
+        if (this.entityManager) {
             this.entityManager.loadEntities(chunkX, chunkY, isSpawnChunk);
-            this.entityManager.initializeChests(chunkX, chunkY); 
+            this.entityManager.initializeChests(chunkX, chunkY);
         }
 
-     
+
         const border = this.scene.add
             .rectangle(
                 chunkX * this.chunkSize * 16 + this.chunkSize * 8,

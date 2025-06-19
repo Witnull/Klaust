@@ -1,0 +1,18 @@
+1. Speed based - attack bar - 100(max) speed + per turn reached 100 -> attack
+12.Skill
+13. Enemy skill
+14, Dice?
+15. skill cards?
+16. What is the end looks like?
+17. Quests??
+
+2. Stack enemy?
+3. Inventory slot
+4. Save load
+5. Stats calc recheck
+6. Add inventory button check
+7. Tilemap
+8. Sprites player, enemy
+9. Shop/Merchant?
+10. upgrade equip
+11. Star ?

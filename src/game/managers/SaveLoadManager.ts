@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver';
-import { PlayerData } from '../types/PlayerData';
+import { PlayerData } from '../types/GameTypes';
 
 /**
  * Saves the player data to a .txt file with Base64 encoding and SHA-256 integrity check.

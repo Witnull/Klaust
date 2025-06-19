@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { Equipment, PlayerData } from "../types/PlayerData";
+import { Equipment, PlayerData } from "../types/GameTypes";
 
 export class Player {
     private sprite: Phaser.GameObjects.Sprite;
@@ -17,7 +17,7 @@ export class Player {
         this.scene = scene;
         this.data = data;
         this.getMapAt = getMapAt;
-        this.sprite = scene.add.sprite((x+.5) * 16, (y+.5) * 16, "player");
+        this.sprite = scene.add.sprite((x + .5) * 16, (y + .5) * 16, "player");
         this.setInitialScale();
     }
 
@@ -45,7 +45,7 @@ export class Player {
 
     updatePlayerData(updatedData: PlayerData) {
         this.data = updatedData;
-    }   
+    }
 
     getSprite(): Phaser.GameObjects.Sprite {
         return this.sprite;

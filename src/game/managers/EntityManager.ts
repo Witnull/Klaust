@@ -3,10 +3,10 @@ import Phaser from "phaser";
 import { Enemy } from "../entities/Enemy";
 import { playerDataManager } from "../managers/PlayerDataManager";
 import { generateRandomEquipment } from "../utils/GenRandomEquipment";
-import {combatEvent} from "../EventBus";
+import { combatEvent } from "../EventBus";
 import { ChunkManager } from "./ChunkManager";
 import { showToast } from "./ToastManager";
-import { EnemyData } from "../types/PlayerData";
+import { EnemyData } from "../types/GameTypes";
 import { v4 as uuid4 } from 'uuid';
 
 
@@ -18,7 +18,7 @@ export class EntityManager {
     private chunkSize: number = 32;
     private enemyHitboxes: Map<string, Phaser.GameObjects.Rectangle> = new Map();
     private chestHitboxes: Map<string, Phaser.GameObjects.Rectangle> = new Map();
-    
+
     public isCombatActive: boolean = false;
 
     constructor(scene: Phaser.Scene, chunkManager: ChunkManager) {
@@ -59,18 +59,18 @@ export class EntityManager {
 
             for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
                 let globalX, globalY;
-                let attempts =0;
-                const maxAttempts  =5;
+                let attempts = 0;
+                const maxAttempts = 5;
                 do {
                     globalX = chunkX * this.chunkSize + Phaser.Math.Between(1, this.chunkSize - 2);
                     globalY = chunkY * this.chunkSize + Phaser.Math.Between(1, this.chunkSize - 2);
                     attempts++;
-                    if(attempts >= maxAttempts){
+                    if (attempts >= maxAttempts) {
                         break;
                     }
                 } while (this.chunkManager.getMapAt(globalX, globalY) !== 0);
 
-                if(this.chunkManager.getMapAt(globalX, globalY) !== 0){
+                if (this.chunkManager.getMapAt(globalX, globalY) !== 0) {
                     continue;
                 }
 
@@ -78,10 +78,10 @@ export class EntityManager {
                     this.scene,
                     globalX,
                     globalY,
-                    this.generateRandomEnemy({x:globalX, y:globalY}),
+                    this.generateRandomEnemy({ x: globalX, y: globalY }),
                     this.chunkManager.getMapAt.bind(this.chunkManager)
                 );
-                
+
                 this.enemies.set(`${chunkX},${chunkY},${i}`, enemy);
 
                 const hitbox = this.scene.add
@@ -107,7 +107,7 @@ export class EntityManager {
             enemy.moveTowardPlayer(playerDataManager.getPlayerData());
             const hitbox = this.enemyHitboxes.get(key);
             if (hitbox) {
-                hitbox.setPosition(enemyPos.x * 16 +8, enemyPos.y * 16 +8);
+                hitbox.setPosition(enemyPos.x * 16 + 8, enemyPos.y * 16 + 8);
             }
             if (playerPos.x === enemyPos.x && playerPos.y === enemyPos.y) {
                 this.scene.scene.pause("GameScene");
@@ -147,31 +147,33 @@ export class EntityManager {
             }
         });
     }
-   private generateRandomEnemy(position : {x:number , y:number}): EnemyData{
+    private generateRandomEnemy(position: { x: number, y: number }): EnemyData {
         const plrLvl = playerDataManager.getPlayerData().level
-        const level = Math.max( 1 , Math.floor(Phaser.Math.Between(plrLvl, plrLvl + 5*Math.floor(plrLvl/2) +5 )/2)) ;
+        const level = Math.max(1, Math.floor(Phaser.Math.Between(plrLvl, plrLvl + 5 * Math.floor(plrLvl / 2) + 5) / 2));
         const enemyData: EnemyData = {
             id: uuid4(),
             position: position,
             name: "Enemy",
             level: level,
-            coins: Math.floor(Phaser.Math.Between(10, 20) *level/2), // Adjust as needed
+            coins: Math.floor(Phaser.Math.Between(10, 20) * level / 2), // Adjust as needed
             stats: {
-                maxhp: Phaser.Math.Between(10, 50) *level,
-                hp : 1,
-                maxmana: Phaser.Math.Between(0, 30*level) ,
+                max_hp: Phaser.Math.Between(10, 50) * level,
+                hp: 1,
+                max_mana: Phaser.Math.Between(0, 30 * level),
                 mana: 1,
                 attack: Phaser.Math.Between(1, 3 * level),
-                defense: Phaser.Math.Between(0, 5 * level) ,
-                speed: Phaser.Math.Between(3, 25 * level/2) ,
-                magic: Phaser.Math.Between(0, 10 * level ) ,
+                defense: Phaser.Math.Between(0, 5 * level),
+                speed: Phaser.Math.Between(3, 25 * level / 2),
+                magic: Phaser.Math.Between(0, 10 * level),
+                crit_chance: Phaser.Math.Between(0, 0.5 * level / 2),
+                crit_damage: Phaser.Math.Between(0, 2 * level),
             },
         };
-        enemyData.stats.hp = enemyData.stats.maxhp;
-        enemyData.stats.mana = enemyData.stats.maxmana;
+        enemyData.stats.hp = enemyData.stats.max_hp;
+        enemyData.stats.mana = enemyData.stats.max_mana;
         return enemyData;
-   }
-   private generateChests(chunkX: number, chunkY: number): { x: number; y: number }[] {
+    }
+    private generateChests(chunkX: number, chunkY: number): { x: number; y: number }[] {
         const chunkKey = `${chunkX},${chunkY}`;
         const chunk = this.chunkManager["chunks"].get(chunkKey); // Access chunks directly
         if (!chunk) return [];
@@ -202,10 +204,10 @@ export class EntityManager {
         const rewardCoins = Phaser.Math.Between(15, 30);
         const coins = currentData.coins + rewardCoins;
         const itemChance = Math.random();
-        const rewardEquipmentName:string[] =[] ;
+        const rewardEquipmentName: string[] = [];
         const inventory = [...currentData.inventory];
         const numberOfItems = Phaser.Math.Between(0, 3);
-        
+
         if (itemChance < 0.5) {
             for (let i = 0; i < numberOfItems; i++) {
                 const equipment = generateRandomEquipment({ level: currentData.level });
@@ -213,7 +215,7 @@ export class EntityManager {
                 rewardEquipmentName.push(equipment.name);
                 inventory.push(equipment);
             }
-           currentData.inventory = inventory;
+            currentData.inventory = inventory;
         }
         chest.destroy();
         this.chests.delete(key);
@@ -224,7 +226,7 @@ export class EntityManager {
         }
         showToast.congrats("Collected treasure!", `+${rewardCoins} coins${rewardEquipmentName.length > 0 ? ", " + rewardEquipmentName.join(", ") : ""}`);
         playerDataManager.updatePlayerData({ coins, inventory });
-        
+
     }
 
     toggleHitboxes(showBorders: boolean) {

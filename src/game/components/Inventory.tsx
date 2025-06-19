@@ -1,147 +1,65 @@
 import React from 'react';
-import { PlayerData, Item, Equipment } from '../types/PlayerData';
+import { PlayerData, Equipment } from '../types/GameTypes';
 import InventoryCell from './InventoryCell';
-import { playerDataManager } from '../managers/PlayerDataManager';
+import AddCapacityCell from './AddCapacityCell';
+import { equipmentManager } from '../managers/EquipmentManager';
 
-const Inventory: React.FC<{
-  playerData: PlayerData;
-  onUpdate: (updatedData: PlayerData) => void;
-  onHover: (item: Item | Equipment | undefined, position: { x: number; y: number }) => void;
-}> = ({ playerData, onUpdate, onHover }) => {
-  const handleEquip = (item: Equipment) => {
-    const currentData = playerDataManager.getPlayerData();
-    const slot = item.type as keyof typeof currentData.equipment;
-    const currentItem = currentData.equipment[slot];
+interface InventoryProps {
+    playerData: PlayerData;
+    onUpdate: (updatedData: PlayerData) => void;
+}
 
-    // Early return if item is already equipped
-    if (currentItem === item) return;
+const Inventory: React.FC<InventoryProps> = ({ playerData }) => {
 
-    const updatedData = JSON.parse(JSON.stringify(currentData)); // Deep copy
 
-    if (currentItem && !Array.isArray(currentItem)) {
-      if (updatedData.inventory.length < 45) {
-        updatedData.inventory.push(currentItem);
-        updatedData.equipment[slot] = undefined;
-      } else {
-        console.warn("Inventory full: Cannot unequip current item to equip new one");
-        return;
-      }
-    }
+    return (
+        <div className="flex flex-col h-full bg-gray-700/35 p-4 rounded-lg shadow-lg text-white">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-teal-400">Inventory</h3>
+                <span className="text-sm text-gray-400">
+                    {playerData.inventory.length}/{playerData.maxInventorySlots || 10} slots
+                </span>
+            </div>
 
-    updatedData.inventory = updatedData.inventory.filter((i: Equipment) => i.id !== item.id);
-    updatedData.equipment[slot] = item;
+            <div className="flex-grow relative overflow-hidden">
+                <div
+                    className="grid grid-cols-5 gap-2 h-full overflow-y-auto"
+                    style={{
+                        gridAutoRows: 'min-content',
+                        alignContent: 'start'
+                    }}
+                >
+                    {playerData.inventory.map((item, index) => (
+                        <div
+                            key={item.id || index}
+                            className="transition-transform hover:scale-95 duration-200"
+                        >
+                            <InventoryCell
+                                item={item}
+                                isEquipped={false}
+                                onEquip={() => "type" in item && equipmentManager.handleEquip(item as Equipment)}
+                                onDelete={() => equipmentManager.handleDelete(item, false)}
+                                slotType="inventory"
+                            />
+                        </div>
+                    ))}
 
-    if (item.stats) {
-      const hpBonus =
-        (item.stats?.mainStat?.maxhp || 0) +
-        (item.stats?.subStats?.find(stat => stat?.maxhp !== undefined)?.maxhp || 0);
-      updatedData.stats.maxhp += hpBonus;
-      updatedData.stats.hp = Math.min(updatedData.stats.hp + hpBonus, updatedData.stats.maxhp);
+                    {/* Show add capacity cell  */}
+                    <div className="transition-transform hover:scale-95 duration-200">
+                        <AddCapacityCell currentCapacity={playerData.maxInventorySlots || 10} />
+                    </div>
+                    
+                </div>
+            </div>
 
-      const manaBonus =
-        (item.stats?.mainStat?.maxmana || 0) +
-        (item.stats?.subStats?.find(stat => stat?.maxmana !== undefined)?.maxmana || 0);
-      updatedData.stats.maxmana += manaBonus;
-      updatedData.stats.mana = Math.min(updatedData.stats.mana + manaBonus, updatedData.stats.maxmana);
-
-      const attackBonus =
-        (item.stats?.mainStat?.attack || 0) +
-        (item.stats?.subStats?.find(stat => stat?.attack !== undefined)?.attack || 0);
-      updatedData.stats.attack += attackBonus;
-
-      const defenseBonus =
-        (item.stats?.mainStat?.defense || 0) +
-        (item.stats?.subStats?.find(stat => stat?.defense !== undefined)?.defense || 0);
-      updatedData.stats.defense += defenseBonus;
-
-      const speedBonus =
-        (item.stats?.mainStat?.speed || 0) +
-        (item.stats?.subStats?.find(stat => stat?.speed !== undefined)?.speed || 0);
-      updatedData.stats.speed += speedBonus;
-
-      const magicBonus =
-        (item.stats?.mainStat?.magic || 0) +
-        (item.stats?.subStats?.find(stat => stat?.magic !== undefined)?.magic || 0);
-      updatedData.stats.magic += magicBonus;
-    }
-
-    playerDataManager.updatePlayerData(updatedData);
-    onUpdate(updatedData); // Notify App.tsx (though this might be redundant with PlayerDataManager)
-  };
-
-  const handleDelete = (item: Item | Equipment | undefined, isEquipped: boolean) => {
-    if (!item) return;
-
-    const currentData = playerDataManager.getPlayerData();
-    const updatedData = JSON.parse(JSON.stringify(currentData)); // Deep copy
-
-    if (isEquipped) {
-      const slot = item.type as keyof typeof updatedData.equipment;
-      updatedData.equipment[slot] = undefined;
-
-      // Reverse stat bonuses if applicable
-      if ("stats" in item && item.stats) {
-        const hpBonus =
-          (item.stats?.mainStat?.maxhp || 0) +
-          (item.stats?.subStats?.find(stat => stat?.maxhp !== undefined)?.maxhp || 0);
-        updatedData.stats.maxhp -= hpBonus;
-        updatedData.stats.hp = Math.min(updatedData.stats.hp, updatedData.stats.maxhp);
-
-        const manaBonus =
-          (item.stats?.mainStat?.maxmana || 0) +
-          (item.stats?.subStats?.find(stat => stat?.maxmana !== undefined)?.maxmana || 0);
-        updatedData.stats.maxmana -= manaBonus;
-        updatedData.stats.mana = Math.min(updatedData.stats.mana, updatedData.stats.maxmana);
-
-        const attackBonus =
-          (item.stats?.mainStat?.attack || 0) +
-          (item.stats?.subStats?.find(stat => stat?.attack !== undefined)?.attack || 0);
-        updatedData.stats.attack -= attackBonus;
-
-        const defenseBonus =
-          (item.stats?.mainStat?.defense || 0) +
-          (item.stats?.subStats?.find(stat => stat?.defense !== undefined)?.defense || 0);
-        updatedData.stats.defense -= defenseBonus;
-
-        const speedBonus =
-          (item.stats?.mainStat?.speed || 0) +
-          (item.stats?.subStats?.find(stat => stat?.speed !== undefined)?.speed || 0);
-        updatedData.stats.speed -= speedBonus;
-
-        const magicBonus =
-          (item.stats?.mainStat?.magic || 0) +
-          (item.stats?.subStats?.find(stat => stat?.magic !== undefined)?.magic || 0);
-        updatedData.stats.magic -= magicBonus;
-      }
-    } else {
-      updatedData.inventory = updatedData.inventory.filter((i : Equipment ) => i.id !== item.id);
-    }
-
-    playerDataManager.updatePlayerData(updatedData);
-    onUpdate(updatedData); // Notify App.tsx
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-gray-800 p-4 rounded-lg shadow-lg text-white">
-      <h3 className="text-lg font-bold mb-4 text-teal-600">Inventory</h3>
-      <div className="grid grid-cols-5 gap-2 overflow-y-scroll h-full">
-        {playerData.inventory.map((item, index) => (
-          <InventoryCell
-            key={item.id || index} // Use item.id if available for better uniqueness
-            item={item}
-            //onClick={() => "type" in item && handleEquip(item as Equipment)} // Only equip if it’s Equipment
-            onHover={(position) => onHover(item, position)}
-          />
-        ))}
-        {Array.from({ length: Math.max(0, 45 - playerData.inventory.length) }).map((_, index) => (
-          <InventoryCell
-            key={`empty-${index}`}
-            onHover={(position) => onHover(undefined, position)}
-          />
-        ))}
-      </div>
-    </div>
-  );
+            {/* Footer statistics */}
+            <div className="mt-4 pt-2 border-t border-gray-700/50">
+                <div className="text-xs text-gray-400 flex justify-between">
+                    <span>Total Value: {playerData.inventory.reduce((total, item) => total + (item.value || 0), 0)} coins</span>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export default Inventory;

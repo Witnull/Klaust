@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { EnemyData, PlayerData, Stats } from "../types/PlayerData";
+import { EnemyData, PlayerData, Stats } from "../types/GameTypes";
 import { combatEvent } from "../EventBus";
 import { generateRandomEquipment } from "../utils/GenRandomEquipment";
 import { playerDataManager } from "./PlayerDataManager";
@@ -45,12 +45,12 @@ export class CombatManager {
     normalAttack(): void {
         if (this.turn !== "player") return;
         const damage = playerDataManager.calcAttack(this.player);
-        const final_damage = Math.floor(Math.max(Math.random()*damage - this.enemyData.stats.defense, 1));
+        const final_damage = Math.floor(Math.max(Math.random() * damage - this.enemyData.stats.defense, 1));
         combatEvent.emit("showDamage", { attacker: this.player.name, target: this.enemyData.name, damage: final_damage });
         this.enemyData.stats.hp -= final_damage;
 
         const manaGain = playerDataManager.calcManaGain(this.player); // Explicit constant
-        this.player.stats.mana = Math.min(this.player.stats.mana + manaGain, this.player.stats.maxmana);
+        this.player.stats.mana = Math.min(this.player.stats.mana + manaGain, this.player.stats.max_mana);
         console.log(`Normal attack: Dealt ${damage} damage, Gained ${manaGain} mana (new mana: ${this.player.stats.mana})`);
         this.nextTurn();
     }
@@ -59,8 +59,8 @@ export class CombatManager {
         if (this.turn !== "player" || this.player.stats.mana < 10) return;
 
         const damage = Math.max(this.player.stats.magic * 1.5 - this.enemyData.stats.defense, 1);
-        combatEvent.emit("showDamage",  {attacker: this.player.name, target: this.enemyData.name, damage });
-        console.log({attacker: this.player.name, target: this.enemyData.name, damage });
+        combatEvent.emit("showDamage", { attacker: this.player.name, target: this.enemyData.name, damage });
+        console.log({ attacker: this.player.name, target: this.enemyData.name, damage });
         this.enemyData.stats.hp -= damage;
         const manaCost = 10; // Explicit constant
         this.player.stats.mana -= manaCost;
@@ -90,17 +90,17 @@ export class CombatManager {
     private isCombatOver(): boolean {
         if (this.enemyData.stats.hp <= 0) {
             const rewardCoins = Phaser.Math.Between(10, 20);
-            const coins = this.player.coins + rewardCoins ;
+            const coins = this.player.coins + rewardCoins;
             const rewardXp = Phaser.Math.Between(10, 20);
             const xp = this.player.xp + rewardXp;
 
-            const rewardEquipmentName:string[] =[] ;
+            const rewardEquipmentName: string[] = [];
             const itemChance = Math.random();
             const numberOfItems = Phaser.Math.Between(0, 3);
             const newInventory = [...this.player.inventory];
 
             if (itemChance < 0.5) {
-                
+
                 for (let i = 0; i < numberOfItems; i++) {
                     const equipment = generateRandomEquipment({ level: this.player.level });
                     console.log("Generated equipment:", equipment);
@@ -109,8 +109,8 @@ export class CombatManager {
                 }
                 this.player.inventory = newInventory;
             }
-            
-            playerDataManager.updatePlayerData({ coins, xp ,inventory: newInventory});
+
+            playerDataManager.updatePlayerData({ coins, xp, inventory: newInventory });
             combatEvent.emit("combatEnd", { result: "victory" });
             console.log("Combat ended: Player wins");
             showToast.congrats("Batlle wins!", `+${rewardCoins} coins, +${rewardXp} xp${rewardEquipmentName.length > 0 ? ", " + rewardEquipmentName.join(", ") : ""}`);
