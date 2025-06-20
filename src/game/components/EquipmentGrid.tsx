@@ -73,10 +73,11 @@ const EquipmentGrid: React.FC<EquipmentGridProps> = ({ playerData }) => {
                     <div>
                         <div className="flex flex-wrap justify-center gap-2 mb-4">
                             {[0, 1, 2, 3].map((slot) => (
-                                <InventoryCell
-                                    key={`consumable-slot-${slot}`}
+                                <InventoryCell key={`consumable-slot-${slot}`}
                                     item={equippedConsumables[slot] || null}
                                     onUnequip={() => skillManager.unequipConsumable(slot)}
+                                    onDelete={() => equippedConsumables[slot] &&
+                                        skillManager.deleteConsumable(equippedConsumables[slot].id, true)}
                                     slotType="equipment"
                                     equipmentType="item"
                                     isEquipped={!!equippedConsumables[slot]}

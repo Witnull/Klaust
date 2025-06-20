@@ -54,7 +54,7 @@ export class PlayerDataManager {
             stats: { ...baseStats },
             equipment,
             inventory: [],
-            position: { x: 16, y: 16 },
+            position: { x: 0, y: 0 },
             skills: playerSkills,
             equippedSkills: [],
             equippedConsumables: [],
@@ -138,6 +138,8 @@ export class PlayerDataManager {
             this.tryLevelUp(playerData); // Check if multiple level ups are possible
         }
     }
+
+    
 
     /**
      * Check if player should learn a new skill upon leveling up
@@ -253,6 +255,10 @@ export class PlayerDataManager {
             speed: this.calcSpeed(playerData),
             magic: this.calcMagic(playerData)
         };
+    }
+
+    public getPos(): { x: number; y: number } {
+        return this.playerData.position;
     }
 
     // // Save/Load functionality

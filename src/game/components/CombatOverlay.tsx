@@ -247,6 +247,7 @@ const CombatOverlay: React.FC = () => {
     const handleNormalAttack = () => combatEvent.emit('normalAttack');
     const handleUseSkill = (skillId: string) => combatEvent.emit('useSkill', skillId);
     const handleFlee = () => combatEvent.emit('flee');
+    const handleUseConsumable = (itemId: string) => combatEvent.emit('useConsumable', itemId);
 
 
     if (!inCombat || !player || !enemy) return null;
@@ -311,7 +312,7 @@ const CombatOverlay: React.FC = () => {
                                             <div key={index} className="flex items-center">
                                                 <span className="text-gray-400 mr-2">{index + 1}.</span>
                                                 <span className={`${turn.name === 'player' ? 'text-blue-300' : 'text-red-300'}`}>
-                                                    {turn.name === 'player' ? player.name : enemy.name}
+                                                    {(turn.name === 'player' ? player.name: enemy.name ) + "[" + turn.number + "]"}
                                                 </span>
                                             </div>
                                         ))}
@@ -502,6 +503,80 @@ const CombatOverlay: React.FC = () => {
                                     <p className="text-gray-400 text-sm">No equipped skill</p>
                                 </div>
                             )}
+                            
+                            {/* Consumable Items Section */}
+                            <div className="mt-4">
+                                <h3 className="text-sm font-bold text-yellow-300 mb-2">Consumable Items</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {player.equippedConsumables?.filter(item => item !== null).map(item => {
+                                        if (!item) return null;
+                                        
+                                        let buttonClass = "relative h-16 ";
+                                        
+                                        // Style consumables based on their effect
+                                        if (item.stats?.mainStat?.hp) {
+                                            buttonClass += "bg-gradient-to-r from-green-800 to-gray-600";
+                                        } else if (item.stats?.mainStat?.mana) {
+                                            buttonClass += "bg-gradient-to-r from-blue-800 to-gray-600";
+                                        } else {
+                                            buttonClass += "bg-gradient-to-r from-amber-800 to-gray-600";
+                                        }
+                                        
+                                        buttonClass += " hover:to-amber-600 text-white py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 overflow-hidden";
+                                        
+                                        // Disable button if not player's turn
+                                        const isDisabled = currentTurn !== 'player';
+                                        
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => handleUseConsumable(item.id)}
+                                                className={buttonClass + (isDisabled ? ' opacity-50 cursor-not-allowed' : '')}
+                                                disabled={isDisabled}
+                                            >
+                                                <div className="absolute inset-0 flex items-center justify-end p-2">
+                                                    {/* SVG icon based on item effect */}
+                                                    {item.stats?.mainStat?.hp && (
+                                                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12H15" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M12 9L12 15" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#ffffff" strokeWidth="1.5"></path></svg>
+                                                    )}
+                                                    {item.stats?.mainStat?.mana && (
+                                                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.8 14C8.8 16.21 10.59 18 12.8 18H18C19.1 18 20 17.1 20 16V15C20 13.9 19.1 13 18 13H16C16 11.9 15.1 11 14 11H12C10.9 11 10 11.9 10 13V14H8.82998C8.83998 14 8.8 14 8.8 14Z" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M4.8 14C4.8 11.79 6.59 10 8.8 10L10.69 10L12.2 8.5" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M21.5 2.5L16 8" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M15 2.5H21.5V9" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                                                    )}
+                                                </div>
+                                                <p className="relative z-10 text-left font-semibold text-lg text-gray-200">
+                                                    {item.name}
+                                                    <span className="block text-xs">{
+                                                        item.stats?.mainStat?.hp 
+                                                        ? `+${item.stats.mainStat.hp} HP` 
+                                                        : item.stats?.mainStat?.mana 
+                                                        ? `+${item.stats.mainStat.mana} MP` 
+                                                        : 'Consumable'
+                                                    }</span>
+                                                </p>
+                                            </button>
+                                        );
+                                    })}
+                                    
+                                    {/* If player has no equipped consumables, show placeholders */}
+                                    {(!player.equippedConsumables || player.equippedConsumables.filter(item => item !== null).length === 0) && (
+                                        <>
+                                            <div className="relative w-full h-16 bg-gray-700/50 text-white py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 overflow-hidden flex items-center justify-center">
+                                                <p className="text-gray-400 text-sm">No consumable</p>
+                                            </div>
+                                            <div className="relative w-full h-16 bg-gray-700/50 text-white py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 overflow-hidden flex items-center justify-center">
+                                                <p className="text-gray-400 text-sm">No consumable</p>
+                                            </div>
+                                        </>
+                                    )}
+                                    
+                                    {/* Show placeholders for remaining empty slots */}
+                                    {player.equippedConsumables && player.equippedConsumables.filter(item => item !== null).length === 1 && (
+                                        <div className="relative w-full h-16 bg-gray-700/50 text-white py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 overflow-hidden flex items-center justify-center">
+                                            <p className="text-gray-400 text-sm">No consumable</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                         <div className="flex items-center justify-center">
                             <button

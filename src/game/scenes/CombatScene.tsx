@@ -20,11 +20,13 @@ export default class CombatScene extends Phaser.Scene {
         const handleNormalAttack = () => this.combatManager.normalAttack();
         const handleUseSkill = (skillId: string) => this.combatManager.useSkill(skillId);
         const handleFlee = () => this.combatManager.flee();
+        const handleUseConsumable = (itemId: string) => this.combatManager.useConsumable(itemId);
 
         // Register combat action listeners
         combatEvent.on('normalAttack', handleNormalAttack);
         combatEvent.on('useSkill', handleUseSkill);
         combatEvent.on('flee', handleFlee);
+        combatEvent.on('useConsumable', handleUseConsumable);
 
         // Start combat
         this.combatManager.startCombat();
@@ -41,6 +43,8 @@ export default class CombatScene extends Phaser.Scene {
             combatEvent.off('normalAttack', handleNormalAttack);
             combatEvent.off('useSkill', handleUseSkill);
             combatEvent.off('flee', handleFlee);
+            combatEvent.off('useConsumable', handleUseConsumable);
+            combatEvent.off('consumableUsed'); // Remove any lingering consumableUsed listeners
             combatEvent.off('combatEnd', handleCombatEnd);
         };
 

@@ -45,7 +45,7 @@ export const ItemPopup: React.FC<ItemPopupProps> = ({ item, onEquip, onUnequip, 
                 )}
             </div>
             <p className="text-sm mt-2">Value: {item.value} Coins</p>
-            {onEquip && (
+            {onEquip && (item.class === "equipment" || (item.class === "item" && item.type ==="consumable" )) && (
                 <button
                     onClick={onEquip}
                     className="mt-2 bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700"
@@ -53,7 +53,7 @@ export const ItemPopup: React.FC<ItemPopupProps> = ({ item, onEquip, onUnequip, 
                     Equip
                 </button>
             )}
-            {onUnequip && (
+            {onUnequip && (item.class === "equipment" || (item.class === "item" && item.type ==="consumable" )) && (
                 <button
                     onClick={onUnequip}
                     className="mt-2 bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 ml-2"

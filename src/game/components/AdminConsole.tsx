@@ -1,6 +1,6 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { generateRandomEquipment, generateRandomItem } from '../utils/GenRandomUtils';
+import { generateRandomEquipment, generateRandomItem } from '../utils/GenRandomItem';
 import { generateRandomSkill } from '../utils/GenRandomSkill';
 import { playerDataManager } from '../managers/PlayerDataManager';
 import { PlayerData, EQUIPMENT_TYPES } from '../types/GameTypes';
@@ -103,18 +103,18 @@ export const AdminConsole: React.FC<{
         const handleAddExp = () => {
             playerDataManager.incXp(expAmount);
         };
-        
+
         const handleAddRandomSkill = () => {
             // Generate a random skill based on player level
             const newSkill = generateRandomSkill({ level: playerData.level });
-            
+
             // Add it to the player's skills
             const updatedSkills = [...(playerData.skills || []), newSkill];
-            
+
             playerDataManager.updatePlayerData({
                 skills: updatedSkills
             });
-        };if (!isVisible) return null;
+        }; if (!isVisible) return null;
 
         return (
             <div

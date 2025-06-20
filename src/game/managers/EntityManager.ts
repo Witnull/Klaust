@@ -2,17 +2,16 @@
 import Phaser from "phaser";
 import { Enemy } from "../entities/Enemy";
 import { playerDataManager } from "../managers/PlayerDataManager";
-import { generateRandomEquipment } from "../utils/GenRandomUtils";
-import { combatEvent } from "../EventBus";
+import { generateRandomEquipment } from "../utils/GenRandomItem";
+import { combatEvent, generationEvent } from '../EventBus';
 import { ChunkManager } from "./ChunkManager";
 import { showToast } from "./ToastManager";
 import { EnemyData } from "../types/GameTypes";
 import { v4 as uuid4 } from 'uuid';
 import { generateEnemySkills, generateRandomSkill } from "../utils/GenRandomSkill";
 
-
 export class EntityManager {
-    private scene: Phaser.Scene;
+    private gameScene: Phaser.Scene;
     private chunkManager: ChunkManager;
     private enemies: Map<string, Enemy> = new Map();
     private chests: Map<string, Phaser.GameObjects.Sprite> = new Map();
@@ -22,8 +21,8 @@ export class EntityManager {
 
     public isCombatActive: boolean = false;
 
-    constructor(scene: Phaser.Scene, chunkManager: ChunkManager) {
-        this.scene = scene;
+    constructor(gameScene: Phaser.Scene, chunkManager: ChunkManager) {
+        this.gameScene = gameScene;
         this.chunkManager = chunkManager;
     }
 
@@ -32,15 +31,17 @@ export class EntityManager {
         chests.forEach((pos, i) => {
             const globalX = chunkX * this.chunkSize + pos.x;
             const globalY = chunkY * this.chunkSize + pos.y;
-            const chest = this.scene.add
-                .sprite((globalX + 0.5) * 16, (globalY + 0.5) * 16, "chest")
-                .setScale(this.scene.cameras.main.width / (32 * 16));
+            const spriteX = (globalX + 0.5) * 16;
+            const spriteY = (globalY + 0.5) * 16;
+            const chest = this.gameScene.add
+                .sprite(spriteX, spriteY, "chest")
+                .setScale(this.gameScene.cameras.main.width / (32 * 16));
             this.chests.set(`${chunkX},${chunkY},${i}`, chest);
 
-            const hitbox = this.scene.add
+            const hitbox = this.gameScene.add
                 .rectangle(
-                    (globalX + 0.5) * 16,
-                    (globalY + 0.5) * 16,
+                    spriteX,
+                    spriteY,
                     16,
                     16,
                     0x00ffff,
@@ -55,8 +56,8 @@ export class EntityManager {
     loadEntities(chunkX: number, chunkY: number, isSpawnChunk: boolean) {
         if (!isSpawnChunk) {
             const chunkKey = `${chunkX},${chunkY}`;
-            const chunk = this.chunkManager["chunks"].get(chunkKey);
-            if (!chunk) return;
+            const chunk = this.chunkManager["chunks"].get(chunkKey); // Access chunks directly
+            if (!chunk) return; // If chunk does not exist, return early
 
             for (let i = 0; i < Phaser.Math.Between(1, 2); i++) {
                 let globalX, globalY;
@@ -76,7 +77,7 @@ export class EntityManager {
                 }
 
                 const enemy = new Enemy(
-                    this.scene,
+                    this.gameScene,
                     globalX,
                     globalY,
                     this.generateRandomEnemy({ x: globalX, y: globalY }),
@@ -85,7 +86,7 @@ export class EntityManager {
 
                 this.enemies.set(`${chunkX},${chunkY},${i}`, enemy);
 
-                const hitbox = this.scene.add
+                const hitbox = this.gameScene.add
                     .rectangle(
                         globalX * 16 + 8,
                         globalY * 16 + 8,
@@ -105,14 +106,15 @@ export class EntityManager {
     handleInteractions(playerPos: { x: number; y: number }) {
         this.enemies.forEach((enemy, key) => {
             const enemyPos = enemy.getPos();
-            enemy.moveTowardPlayer(playerDataManager.getPlayerData());
+            const playerPos = playerDataManager.getPos();
+            enemy.moveTowardPlayer(playerPos);
             const hitbox = this.enemyHitboxes.get(key);
             if (hitbox) {
                 hitbox.setPosition(enemyPos.x * 16 + 8, enemyPos.y * 16 + 8);
             }
             if (playerPos.x === enemyPos.x && playerPos.y === enemyPos.y) {
-                this.scene.scene.pause("GameScene");
-                this.scene.scene.launch("CombatScene", {
+                this.gameScene.scene.pause("GameScene");
+                this.gameScene.scene.launch("CombatScene", {
                     player: playerDataManager.getPlayerData(),
                     enemyData: enemy.getEnemyData(),
                 });
@@ -127,9 +129,12 @@ export class EntityManager {
                             hitbox.destroy();
                             this.enemyHitboxes.delete(key);
                         }
+                    } else if (result === "fled") {
+                        // When player flees, teleport them away from the enemy
+                        this.movePlayerAwayFromEnemy(enemyPos);
                     }
-                    this.scene.scene.resume("GameScene");
-                    this.scene.scene.stop("CombatScene"); // Redundant but safe
+                    this.gameScene.scene.resume("GameScene");
+                    this.gameScene.scene.stop("CombatScene"); // Redundant but safe
                     this.isCombatActive = false;
                     combatEvent.off("combatEnd", handleCombatEnd); // Use combatEvent
                 };
@@ -147,7 +152,8 @@ export class EntityManager {
                 this.openChest(chest, key);
             }
         });
-    }    private generateRandomEnemy(position: { x: number, y: number }): EnemyData {
+    }
+    private generateRandomEnemy(position: { x: number, y: number }): EnemyData {
         const plrLvl = playerDataManager.getPlayerData().level
         const level = Math.max(1, Math.floor(Phaser.Math.Between(plrLvl, plrLvl + 5 * Math.floor(plrLvl / 2) + 5) / 2));
         const enemyData: EnemyData = {
@@ -180,6 +186,7 @@ export class EntityManager {
         const chunk = this.chunkManager["chunks"].get(chunkKey); // Access chunks directly
         if (!chunk) return [];
 
+
         const chestPositions: { x: number; y: number }[] = [];
         const numChests = Phaser.Math.Between(1, 2); // Adjust as needed
         for (let i = 0; i < numChests; i++) {
@@ -192,14 +199,16 @@ export class EntityManager {
                 attempt++;
                 if (attempt >= maxAttempts) break;
 
-            } while (chunk.map[y][x] !== 0); // Ensure floor tile
-            if (chunk.map[y][x] !== 0) {
+            } while (chunk?.map[y][x] !== 0); // Ensure floor tile
+            if (chunk?.map[y][x] !== 0) {
                 continue;
             }
             chestPositions.push({ x, y });
         }
         return chestPositions;
-    }    private openChest(chest: Phaser.GameObjects.Sprite, key: string) {
+    }
+
+    private openChest(chest: Phaser.GameObjects.Sprite, key: string) {
         const currentData = playerDataManager.getPlayerData();
         const rewardCoins = Phaser.Math.Between(15, 30);
         const coins = currentData.coins + rewardCoins;
@@ -214,6 +223,10 @@ export class EntityManager {
         // 50% chance to find equipment items
         if (itemChance < 0.5) {
             for (let i = 0; i < numberOfItems; i++) {
+                if (!playerDataManager.hasInventorySpace()) {
+                    showToast.error("Inventory full! You cannot collect more items");
+                    return;
+                }
                 const equipment = generateRandomEquipment({ level: currentData.level });
                 console.log("Generated equipment:", equipment);
                 rewardEquipmentName.push(equipment.name);
@@ -236,7 +249,7 @@ export class EntityManager {
             hitbox.destroy();
             this.chestHitboxes.delete(key);
         }
-        
+
         // Create toast message for all rewards
         let rewardMessage = "";
         if (rewardCoins > 0) {
@@ -250,15 +263,69 @@ export class EntityManager {
             rewardMessage += rewardMessage ? ", " : "";
             rewardMessage += "Skill: " + rewardSkillName.join(", ");
         }
-        
+
         showToast.congrats("Collected treasure!", rewardMessage);
-        
+
         // Update player data with all rewards
-        playerDataManager.updatePlayerData({ 
-            coins, 
+        playerDataManager.updatePlayerData({
+            coins,
             inventory,
             skills
         });
+    }
+
+    // Move the player to a safe location away from the enemy after fleeing
+    private movePlayerAwayFromEnemy(enemyPos: { x: number, y: number }) {
+        // Try to move player 3-5 tiles away from enemy in a random direction
+        const distance = Math.floor(Math.random() * 3) + 3; // 3-5 tiles
+        const directions = [
+            { dx: 0, dy: -1 },  // North
+            { dx: 1, dy: -1 },  // Northeast
+            { dx: 1, dy: 0 },   // East
+            { dx: 1, dy: 1 },   // Southeast
+            { dx: 0, dy: 1 },   // South
+            { dx: -1, dy: 1 },  // Southwest
+            { dx: -1, dy: 0 },  // West
+            { dx: -1, dy: -1 }  // Northwest
+        ];
+
+        // Shuffle directions for better randomness
+        const shuffledDirections = [...directions].sort(() => Math.random() - 0.5);
+
+        // Try each direction until we find a valid position
+        for (const dir of shuffledDirections) {
+            const dX = (dir.dx * distance);
+            const dY = (dir.dy * distance);
+            const newX = enemyPos.x + dX;
+            const newY = enemyPos.y + dY;
+
+            // Check if the new position is valid (not a wall or occupied)
+            if (this.chunkManager.getMapAt(newX, newY) === 0) { // 0 == ok
+                // Update player position
+                playerDataManager.updatePlayerData({ position: { x: newX, y: newY } });
+                // Show a message to the player
+                showToast.congrats("Escaped!", "You fled to safety");
+                return;
+            }
+        }
+
+        // If all directions failed, try a simpler approach: just move away in a random valid direction
+        for (let i = 0; i < 10; i++) { // Try up to 10 times
+            const randomDir = directions[Math.floor(Math.random() * directions.length)];
+            const dX = (randomDir.dx * (6 + i)); // At least 6 tiles away
+            const dY = (randomDir.dy * (6 + i));
+            const newX = enemyPos.x + dX;
+            const newY = enemyPos.y + dY;
+
+            if (this.chunkManager.getMapAt(newX, newY) === 0) { // 0 == ok
+                playerDataManager.updatePlayerData({ position: { x: newX, y: newY } });
+                showToast.congrats("Escaped!", "You fled to safety");
+                return;
+            }
+        }
+
+        // If all else fails, simply notify the player
+        showToast.congrats("Failed to escape!", "You couldn't escape!");
     }
 
     toggleHitboxes(showBorders: boolean) {
@@ -269,4 +336,5 @@ export class EntityManager {
     getEntities() {
         return { enemies: this.enemies, chests: this.chests };
     }
+
 }

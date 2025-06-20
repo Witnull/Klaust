@@ -2,12 +2,11 @@
 import Phaser from "phaser";
 import { MapGenerator, Room } from "./MapGenerator";
 import { CONFIG } from "../config";
-import { PlayerData } from "../types/GameTypes";
 import { playerDataManager } from "./PlayerDataManager";
 import { MapExporter } from "./MapExporter";
-import { Player } from "../entities/Player";
 import { EntityManager } from "./EntityManager";
-import { showToast } from "./ToastManager";
+import { generationEvent } from "../EventBus";
+import { Flashlight } from "lucide-react";
 
 interface ChunkData {
     map: number[][];
@@ -17,7 +16,7 @@ interface ChunkData {
 }
 
 export class ChunkManager {
-    private scene: Phaser.Scene;
+    private gameScene: Phaser.Scene;
     private chunks: Map<string, ChunkData> = new Map();
     private fullMapRooms: Map<string, Room[]> = new Map();
     private mapGenerator: MapGenerator;
@@ -25,26 +24,24 @@ export class ChunkManager {
     private chunkBorders: Map<string, Phaser.GameObjects.Rectangle> = new Map();
     private chunkGrids: Map<string, Phaser.GameObjects.Group> = new Map();
     private visibleChunks: Set<string> = new Set();
-    private player: Player | null;
-    private entityManager: EntityManager;
+    private entityManager: EntityManager | null = null;
 
     public showBorders: boolean = false;
 
-    constructor(scene: Phaser.Scene, player: Player) {
-        this.scene = scene;
+    constructor(gameScene: Phaser.Scene) {
+        this.gameScene = gameScene;
         this.mapGenerator = new MapGenerator(this.chunkSize);
-        this.player = player
-    }
-
-    hasChunks(): boolean {
-        return this.chunks.size > 0;
     }
 
     setEntityManager(entityManager: EntityManager) {
         this.entityManager = entityManager;
     }
 
-    initializeSpawnChunk(playerData: PlayerData) {
+    hasChunks(): boolean {
+        return this.chunks.size > 0;
+    }
+
+    initializeSpawnChunk() {
         const chunkX = 0;
         const chunkY = 0;
         const chunkKey = `${chunkX},${chunkY}`;
@@ -61,11 +58,11 @@ export class ChunkManager {
         const room0 = rooms[0]
         let startX = room0.centerX, startY = room0.centerY;
         playerDataManager.updatePlayerData({ position: { x: startX, y: startY } });
-
+        console.log("ChunkManager: Initial player position set to", { x: startX, y: startY });
         // Add grid lines
-        const gridGroup = this.scene.add.group();
+        const gridGroup = this.gameScene.add.group();
         for (let x = 0; x < this.chunkSize; x++) {
-            const line = this.scene.add
+            const line = this.gameScene.add
                 .rectangle(
                     chunkX * this.chunkSize * 16 + x * 16,
                     chunkY * this.chunkSize * 16 + this.chunkSize * 8,
@@ -79,7 +76,7 @@ export class ChunkManager {
         }
 
         for (let y = 0; y < this.chunkSize; y++) {
-            const line = this.scene.add
+            const line = this.gameScene.add
                 .rectangle(
                     chunkX * this.chunkSize * 16 + this.chunkSize * 8,
                     chunkY * this.chunkSize * 16 + y * 16,
@@ -92,15 +89,12 @@ export class ChunkManager {
             gridGroup.add(line);
         }
         this.chunkGrids.set(chunkKey, gridGroup);
-
-
-
     }
 
     updateChunks(playerPos: { x: number; y: number }) {
         const chunkX = Math.floor(playerPos.x / this.chunkSize);
         const chunkY = Math.floor(playerPos.y / this.chunkSize);
-        const renderDistance = (this.scene.cameras.main.zoom > 1 ? 1 : 2);
+        const renderDistance = (this.gameScene.cameras.main.zoom > 1 ? 1 : 2);
 
         const newVisibleChunks = new Set<string>();
         for (let y = chunkY - renderDistance; y <= chunkY + renderDistance; y++) {
@@ -180,10 +174,11 @@ export class ChunkManager {
         if (this.entityManager) {
             this.entityManager.loadEntities(chunkX, chunkY, isSpawnChunk);
             this.entityManager.initializeChests(chunkX, chunkY);
+        } else {
+            console.warn("EntityManager not set. Skipping entity loading for chunk.");
         }
 
-
-        const border = this.scene.add
+        const border = this.gameScene.add
             .rectangle(
                 chunkX * this.chunkSize * 16 + this.chunkSize * 8,
                 chunkY * this.chunkSize * 16 + this.chunkSize * 8,
@@ -197,9 +192,9 @@ export class ChunkManager {
         this.chunkBorders.set(chunkKey, border);
 
         // Add grid lines
-        const gridGroup = this.scene.add.group();
+        const gridGroup = this.gameScene.add.group();
         for (let x = 0; x < this.chunkSize; x++) {
-            const line = this.scene.add
+            const line = this.gameScene.add
                 .rectangle(
                     chunkX * this.chunkSize * 16 + x * 16,
                     chunkY * this.chunkSize * 16 + this.chunkSize * 8,
@@ -213,7 +208,7 @@ export class ChunkManager {
         }
 
         for (let y = 0; y < this.chunkSize; y++) {
-            const line = this.scene.add
+            const line = this.gameScene.add
                 .rectangle(
                     chunkX * this.chunkSize * 16 + this.chunkSize * 8,
                     chunkY * this.chunkSize * 16 + y * 16,
@@ -228,7 +223,7 @@ export class ChunkManager {
         this.chunkGrids.set(chunkKey, gridGroup);
 
         // Ensure player stays above new tilemap
-        const playerSprite = (this.scene as any).player?.getSprite(); // Type assertion for simplicity
+        const playerSprite = (this.gameScene as any).player?.getSprite(); // Type assertion for simplicity
         if (playerSprite) {
             playerSprite.setDepth(10);
         }
@@ -256,7 +251,7 @@ export class ChunkManager {
     }
 
     private createTilemap(map: number[][], chunkX: number, chunkY: number): Phaser.Tilemaps.Tilemap {
-        const tilemap = this.scene.make.tilemap({
+        const tilemap = this.gameScene.make.tilemap({
             data: map,
             tileWidth: CONFIG.TILE_SIZE,
             tileHeight: CONFIG.TILE_SIZE,

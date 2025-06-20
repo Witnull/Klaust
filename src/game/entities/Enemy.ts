@@ -21,9 +21,9 @@ export class Enemy {
         this.sprite.setScale(scaleFactor);
     }
 
-    moveTowardPlayer(player: { position: { x: number; y: number } }) {
-        const dx = player.position.x - this.enemyData.position.x;
-        const dy = player.position.y - this.enemyData.position.y;
+    moveTowardPlayer(player_pos: { x: number; y: number } ) {
+        const dx = player_pos.x - this.enemyData.position.x;
+        const dy = player_pos.y - this.enemyData.position.y;
         if (Math.abs(dx) <= 8 && Math.abs(dy) <= 8) {
             const moveX = dx !== 0 ? Math.sign(dx) : 0;
             const moveY = dy !== 0 ? Math.sign(dy) : 0;

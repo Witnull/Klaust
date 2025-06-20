@@ -1,8 +1,7 @@
 import Phaser from "phaser";
 import { EnemyData, PlayerData, Stats, Skill, StatusEffects } from "../types/GameTypes";
 import { combatEvent } from "../EventBus";
-import { generateRandomEquipment } from "../utils/GenRandomUtils";
-import { generateRandomSkill } from "../utils/GenRandomSkill";
+import { generateRandomEquipment } from "../utils/GenRandomItem";
 import { playerDataManager } from "./PlayerDataManager";
 import { showToast } from "./ToastManager";
 // Define the interface for list items
@@ -52,7 +51,7 @@ export class CombatManager {
             enemy: this.enemyData,
             turnOrder: this.sortedList
         });
-    }    private nextTurn(): void {
+    } private nextTurn(): void {
         if (this.isCombatOver()) return;
 
         if (this.sortedList.length === 0) {
@@ -65,18 +64,18 @@ export class CombatManager {
         // Get the current turn item (entity with lowest number)
         const item = this.sortedList.shift() || { name: "player" as const, number: 0 };
         const subtractAmount = item.number; // This is the amount to subtract from all other items
-        
+
         // Subtract this amount from all other items in the list
         this.sortedList.forEach(listItem => {
             listItem.number -= subtractAmount;
         });
-        
+
         // Also decrease all skill cooldowns
         this.decreaseCooldowns(subtractAmount);
-        
+
         // Process status effects based on the subtracted amount
         this.processStatusEffects(subtractAmount);
-        
+
         this.turn = item.name;
         console.log(`Next turn: ${this.turn}`);
 
@@ -157,12 +156,21 @@ export class CombatManager {
         this.insertTurn("player", BASE_ATTACK_COOLDOWN);
 
         this.nextTurn();
-    }    useSkill(skill_id: string): void {
+    }
+
+    useSkill(skill_id: string): void {
         if (this.turn !== "player") return;
 
-        const skill_info = this.playerData.skills?.find(skill => skill.id === skill_id);
+        // Look for skill in both skills and equippedSkills arrays
+        let skill_info = this.playerData.skills?.find(skill => skill.id === skill_id);
+        
+        // If not found in skills, check equippedSkills
+        if (!skill_info && this.playerData.equippedSkills) {
+            skill_info = this.playerData.equippedSkills.find(skill => skill && skill.id === skill_id);
+        }
+        
         if (!skill_info) {
-            console.error(`Skill with ID ${skill_id} not found`);
+            console.error(`Skill with ID ${skill_id} not found in skills or equippedSkills`);
             showToast.congrats("Skill Error", "Skill not found");
             return;
         }
@@ -350,25 +358,23 @@ export class CombatManager {
         // More complex skills have longer cooldowns
         const cooldownInTurns = Math.ceil(skillCooldown * 10);
         this.playerSkillCooldowns.set(skill_id, cooldownInTurns);
-        
-        console.log(`Skill ${skill_info.name} put on cooldown for ${cooldownInTurns} turns`);
 
-        // Use skill's action cooldown or default to 30
-        // Add player speed to the calculation
-        const playerSpeed = this.playerData.stats.speed;
-        const baseCD = skill_info.actionCooldown || 30;
+        console.log(`Skill ${skill_info.name} put on cooldown for ${cooldownInTurns} turns`);        // Use skill's action cooldown or default to 30
         // Formula: base cooldown + (skill cooldown * 5)
+        const baseCD = skill_info.actionCooldown || 30;
         const actionCD = baseCD + (skillCooldown * 5);
-        
+
         this.insertTurn("player", actionCD);
 
         this.nextTurn();
-    } flee(): void {
+    } 
+    
+    flee(): void {
         if (this.turn !== "player") return;
 
         const fleeChance = Math.max(10, Math.min(90, this.playerData.stats.speed - this.enemyData.stats.speed + 50));
         this.isFled = Math.random() * 100 < fleeChance;
-        console.log(`Flee attempt: ${this.isFled ? "Success" : "Failed"}`);
+        //console.log(`Flee attempt: ${this.isFled ? "Success" : "Failed"}`);
 
         if (!this.isFled) {
             // Failed flee attempt still counts as an action
@@ -477,6 +483,7 @@ export class CombatManager {
         }
 
         if (this.isFled && this.playerData.stats.hp > 0) {
+            
             playerDataManager.updatePlayerData(this.playerData);
             combatEvent.emit("combatEnd", { result: "fled" });
             console.log("Combat ended: Player flees");
@@ -490,7 +497,8 @@ export class CombatManager {
     /**
      * Applies status effects from a skill to either the player or enemy
      * @param skill The skill containing status effects to apply
-     */    private applyStatusEffects(skill: Skill): void {
+     */    
+    private applyStatusEffects(skill: Skill): void {
         if (!skill.statusEffects || skill.statusEffects.length === 0) return;
 
         // Process each status effect
@@ -501,14 +509,14 @@ export class CombatManager {
                 const effect = statusEffect[dotType];
                 if (effect) {
                     this.applyDamageOverTimeEffect(dotType, statusEffect, this.enemyData);
-                    
+
                     // Track the effect for the timing system
                     const amount = effect.amount[effect.level - 1] || effect.amount[0];
                     const effectId = `${dotType}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-                    const interval = dotType === 'poison' ? 3 : 
-                                    dotType === 'burn' ? 5 : 
-                                    dotType === 'chill' ? 4 : 2; // bleed is faster
-                    
+                    const interval = dotType === 'poison' ? 3 :
+                        dotType === 'burn' ? 5 :
+                            dotType === 'chill' ? 4 : 2; // bleed is faster
+
                     this.statusEffects.push({
                         id: effectId,
                         target: "enemy",
@@ -519,7 +527,7 @@ export class CombatManager {
                         amount: amount,
                         effect: effect
                     });
-                    
+
                     console.log(`Tracking ${dotType} effect with ID ${effectId} for timing system`);
                 }
             });
@@ -548,7 +556,7 @@ export class CombatManager {
                     duration: effect.duration,
                     amount: healAmount
                 });
-                
+
                 // Track healing effect for timing system
                 const effectId = `heal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
                 this.statusEffects.push({
@@ -561,15 +569,15 @@ export class CombatManager {
                     amount: healAmount,
                     effect: effect
                 });
-                
+
                 console.log(`Tracking heal effect with ID ${effectId} for timing system`);
             }
-            
+
             // Handle stat increases and decreases for timing system
             if (statusEffect.increase_stat) {
                 const effect = statusEffect.increase_stat;
                 const effectId = `buff_${effect.stat}_${Date.now()}`;
-                
+
                 // Note: The actual stat increase is already handled in the useSkill method
                 // Here we just track it for the timing system to handle duration
                 this.statusEffects.push({
@@ -583,11 +591,11 @@ export class CombatManager {
                     effect: effect
                 });
             }
-            
+
             if (statusEffect.decrease_stat) {
                 const effect = statusEffect.decrease_stat;
                 const effectId = `debuff_${effect.stat}_${Date.now()}`;
-                
+
                 // Note: The actual stat decrease is already handled in the useSkill method
                 // Here we just track it for the timing system to handle duration
                 this.statusEffects.push({
@@ -683,7 +691,7 @@ export class CombatManager {
             }
         });
     }
-    
+
     /**
      * Process all active status effects based on the elapsed time
      * @param elapsedTime The amount of time that has passed
@@ -691,25 +699,25 @@ export class CombatManager {
     private processStatusEffects(elapsedTime: number): void {
         // Process each status effect
         const effectsToRemove: string[] = [];
-        
+
         this.statusEffects.forEach(effect => {
             // Update elapsed time and duration
             effect.elapsed += elapsedTime;
             effect.duration -= elapsedTime;
-            
+
             // Check if the effect has expired
             if (effect.duration <= 0) {
                 effectsToRemove.push(effect.id);
                 return;
             }
-            
+
             // Calculate how many intervals have passed
             const intervals = Math.floor(effect.elapsed / effect.interval);
-            
+
             // Reset elapsed time if intervals have passed
             if (intervals > 0) {
                 effect.elapsed = effect.elapsed % effect.interval;
-                
+
                 // Apply the effect for each interval
                 switch (effect.type) {
                     case "damage":
@@ -717,20 +725,20 @@ export class CombatManager {
                         const damageTarget = effect.target === "player" ? this.playerData : this.enemyData;
                         const totalDamage = effect.amount * intervals;
                         damageTarget.stats.hp = Math.max(0, damageTarget.stats.hp - totalDamage);
-                        
+
                         combatEvent.emit("showDamage", {
                             attacker: effect.target === "player" ? this.enemyData.name : this.playerData.name,
                             target: effect.target === "player" ? this.playerData.name : this.enemyData.name,
                             damage: totalDamage
                         });
                         break;
-                        
+
                     case "heal":
                         // Apply healing
                         const healTarget = effect.target === "player" ? this.playerData : this.enemyData;
                         const totalHeal = effect.amount * intervals;
                         healTarget.stats.hp = Math.min(healTarget.stats.max_hp, healTarget.stats.hp + totalHeal);
-                        
+
                         combatEvent.emit("showHeal", {
                             target: effect.target === "player" ? this.playerData.name : this.enemyData.name,
                             amount: totalHeal
@@ -739,8 +747,97 @@ export class CombatManager {
                 }
             }
         });
-        
+
         // Remove expired effects
         this.statusEffects = this.statusEffects.filter(effect => !effectsToRemove.includes(effect.id));
+    }    useConsumable(itemId: string): void {
+        if (this.turn !== "player") return;
+
+        // Look for consumable in equippedConsumables
+        const item = this.playerData.equippedConsumables?.find(item => item && item.id === itemId);
+        if (!item) {
+            console.error(`Consumable with ID ${itemId} not found`);
+            showToast.congrats("Item Error", "Consumable not found");
+            return;
+        }
+
+        // Check if it's actually a consumable
+        if (item.type !== 'consumable') {
+            console.error(`Item with ID ${itemId} is not a consumable`);
+            showToast.congrats("Item Error", "Not a consumable item");
+            return;
+        }
+
+        // Apply the consumable's effects
+        if (item.stats?.mainStat) {
+            const stats = item.stats.mainStat;
+            
+            // Heal HP
+            if (stats.hp) {
+                const healAmount = stats.hp;
+                this.playerData.stats.hp = Math.min(this.playerData.stats.hp + healAmount, this.playerData.stats.max_hp);
+                console.log(`Used ${item.name}: Healed for ${healAmount} (new HP: ${this.playerData.stats.hp})`);
+                combatEvent.emit("showHeal", {
+                    target: "player",
+                    amount: healAmount
+                });
+            }
+            
+            // Restore Mana
+            if (stats.mana) {
+                const manaAmount = stats.mana;
+                this.playerData.stats.mana = Math.min(this.playerData.stats.mana + manaAmount, this.playerData.stats.max_mana);
+                console.log(`Used ${item.name}: Restored ${manaAmount} mana (new mana: ${this.playerData.stats.mana})`);
+                combatEvent.emit("showManaRestore", {
+                    target: "player",
+                    amount: manaAmount
+                });
+            }
+            
+            // Apply temporary buffs (attack, defense, etc.)
+            Object.entries(stats).forEach(([statKey, statValue]) => {
+                if (statKey !== 'hp' && statKey !== 'mana' && statValue) {
+                    const stat = statKey as keyof Stats;
+                    // For demonstration, apply a 3-turn buff
+                    const duration = 3;
+                    
+                    // Generate a unique ID for this status effect
+                    const effectId = `${item.name}_${stat}_${Date.now()}`;
+                    
+                    this.statusEffects.push({
+                        id: effectId,
+                        target: "player",
+                        type: "buff",
+                        duration: duration,
+                        interval: 1,
+                        elapsed: 0,
+                        amount: statValue,
+                        effect: {
+                            stat: stat,
+                            value: statValue
+                        }
+                    });
+                    
+                    // Apply the buff immediately
+                    this.playerData.stats[stat] += statValue;
+                    console.log(`Used ${item.name}: Buffed ${stat} by ${statValue} for ${duration} turns`);
+                    
+                    // Notify the UI
+                    combatEvent.emit("showBuff", {
+                        target: "player",
+                        stat: stat,
+                        amount: statValue,
+                        duration: duration
+                    });
+                }
+            });
+        }
+        
+        // Remove the consumable after use (reduce quantity or remove if quantity is 1)
+        // Note: The actual removal will be handled at a higher level (SkillManager or EquipmentManager)
+        combatEvent.emit("consumableUsed", itemId);
+        
+        // End the player's turn
+        this.nextTurn();
     }
 }

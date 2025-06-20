@@ -1,7 +1,6 @@
 // GameScene.ts
 import Phaser from "phaser";
 import { Player } from "../entities/Player";
-import { CONFIG } from "../config";
 import { PlayerData } from "../types/GameTypes";
 import { playerDataManager } from "../managers/PlayerDataManager";
 import { ChunkManager } from "../managers/ChunkManager";
@@ -31,11 +30,9 @@ export class GameScene extends Phaser.Scene {
 
     constructor() {
         super("GameScene");
-        this.chunkManager = new ChunkManager(this, this.player);
+        this.chunkManager = new ChunkManager(this);
         this.entityManager = new EntityManager(this, this.chunkManager);
         this.chunkManager.setEntityManager(this.entityManager);
-
-
 
     }
 
@@ -47,36 +44,50 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
-        const playerData = playerDataManager.getPlayerData();
-
-        if (!this.chunkManager.hasChunks()) {
-            this.chunkManager.initializeSpawnChunk(playerData);
+        let playerLogicalPos = playerDataManager.getPos(); // initial pos selected in ChunkManager
+        if (!this.chunkManager.hasChunks()) { // If no chunks are loaded, initialize spawn chunk
+            this.chunkManager.initializeSpawnChunk();
+            
+            // Get updated position from PlayerDataManager after chunk initialization
+            const playerLogicalPos = playerDataManager.getPos();
+            
+            // Convert logical position to sprite position
+            const playerSpritePos = this.normPlayerSpritePos(playerLogicalPos);
+            
+            // Create player sprite at the sprite position
             this.player = new Player(
                 this,
-                playerData.position.x,
-                playerData.position.y,
-                playerData,
-                this.chunkManager.getMapAt.bind(this.chunkManager)
+                playerSpritePos.x,
+                playerSpritePos.y,
             );
+            
             this.entityManager.initializeChests(0, 0);
+            console.log("GameScene: Initial player position set to", playerLogicalPos, 
+                "Sprite position:", playerSpritePos, 
+                "Actual sprite pos:", this.player.getSpritePos());
+          
         } else {
+            // Convert logical position to sprite position
+            const playerSpritePos = this.normPlayerSpritePos(playerLogicalPos);
+            
+            // Create player sprite at the sprite position
             this.player = new Player(
                 this,
-                playerData.position.x,
-                playerData.position.y,
-                playerData,
-                this.chunkManager.getMapAt.bind(this.chunkManager)
+                playerSpritePos.x,
+                playerSpritePos.y,
             );
-            this.chunkManager.updateChunks(this.player.getPos());
+            
+            this.chunkManager.updateChunks(playerLogicalPos);
         }
 
-        this.player.getSprite().setDepth(10);
-
+        this.player.getSprite().setDepth(10);        // Get current sprite position for hitbox and camera
+        const currentSpritePos = this.player.getSpritePos();
+        
         // Add player hitbox
         this.playerHitbox = this.add
             .rectangle(
-                playerData.position.x * 16 + 8,
-                playerData.position.y * 16 + 8,
+                currentSpritePos.x,
+                currentSpritePos.y,
                 16,
                 16,
                 0xffff00,
@@ -88,10 +99,8 @@ export class GameScene extends Phaser.Scene {
 
         this.cameras.main.setBounds(-Infinity, -Infinity, Infinity, Infinity);
         this.cameras.main.startFollow(this.player.getSprite(), false, 0.1, 0.1);
-        this.cameras.main.centerOn(playerData.position.x * 16, playerData.position.y * 16);
-        this.cameras.main.setZoom(1);
-
-        this.keys = {
+        this.cameras.main.centerOn(currentSpritePos.x, currentSpritePos.y);
+        this.cameras.main.setZoom(1);this.keys = {
             w: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
             a: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
             s: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
@@ -101,19 +110,26 @@ export class GameScene extends Phaser.Scene {
             minus: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.MINUS),
             b: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.B),
         };
-
-
-
+        
         // Sync with PlayerDataManager updates
         playerDataManager.on("playerDataUpdated", (updatedData: PlayerData) => {
-            console.log("GameScene: Player data updated", updatedData);
-            this.player.updatePlayerData(updatedData);
-            this.chunkManager.updateChunks(this.player.getPos());
-            this.playerHitbox.setPosition(updatedData.position.x * 16 + 8, updatedData.position.y * 16 + 8);
+            //console.log("GameScene: Player data updated", updatedData);
+            const playerNewPos = playerDataManager.getPos();
+            const normNewPlayerSpritePos = this.normPlayerSpritePos(playerNewPos);
+            const currentPlayerSpritePos = this.player.getSpritePos();
+            
+            // Check if positions are different using proper comparison
+            if (currentPlayerSpritePos.x !== normNewPlayerSpritePos.x || 
+                currentPlayerSpritePos.y !== normNewPlayerSpritePos.y) {
+                this.player.move(normNewPlayerSpritePos);
+            }
+            
+            this.chunkManager.updateChunks(playerNewPos);
+            this.playerHitbox.setPosition(normNewPlayerSpritePos.x, normNewPlayerSpritePos.y);
             this.player.getSprite().setDepth(10);
         });
 
-        this.chunkManager.updateChunks(this.player.getPos());
+        this.chunkManager.updateChunks(playerLogicalPos);
     }
 
     update() {
@@ -133,24 +149,50 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    private handleMove(dx: number, dy: number) {
+
+    private normPlayerSpritePos(playerPos: { x: number, y: number }): { x: number, y: number } {
+        return {
+            x: playerPos.x * 16 + 8,
+            y: playerPos.y * 16 + 8
+        };
+    }    private handleMove(dx: number, dy: number) {
+        // Don't allow movement if animation is in progress
         if (this.tweens.getTweensOf(this.player.getSprite()).length > 0) return;
-
-        this.player.move(dx, dy);
-        const playerPos = this.player.getPos();
-        playerDataManager.updatePlayerData({ position: playerPos });
-
-        this.entityManager.handleInteractions(playerPos);
-        this.chunkManager.updateChunks(playerPos);
+        
+        // Get current logical position
+        const currentPos = playerDataManager.getPos();
+        
+        // Calculate new logical position
+        const newLogicalPos = { x: currentPos.x + dx, y: currentPos.y + dy };
+        
+        // Check if the new position is walkable
+        // ChunkManager expects tile coordinates, not pixel coordinates
+        if (this.chunkManager.getMapAt(newLogicalPos.x, newLogicalPos.y) !== 0) {
+            return; // Blocked by wall or obstacle
+        }
+        
+        // Convert logical position to sprite position for visual display
+        const newSpritePos = this.normPlayerSpritePos(newLogicalPos);
+        
+        console.log(`Player moved to: ${JSON.stringify(newLogicalPos)} (sprite pos: ${JSON.stringify(newSpritePos)})`);
+        
+        // Move the sprite
+        this.player.move(newSpritePos);
+        
+        // Update player data with the new logical position
+        playerDataManager.updatePlayerData({ position: newLogicalPos });
+        
+        // Check for interactions at the new position
+        this.entityManager.handleInteractions(newLogicalPos);
     }
 
     private adjustZoom(delta: number) {
         const newZoom = Phaser.Math.Clamp(this.cameras.main.zoom + delta, 2 / this.maxRenderDistance, 2 * this.minRenderDistance);
         this.cameras.main.setZoom(newZoom);
-        this.chunkManager.updateChunks(this.player.getPos());
+        this.chunkManager.updateChunks(playerDataManager.getPos());
     }
 
     private exportMap() {
-        this.chunkManager.exportMap(this.player.getPos(), this.entityManager.getEntities());
+        this.chunkManager.exportMap(playerDataManager.getPos(), this.entityManager.getEntities());
     }
 }
