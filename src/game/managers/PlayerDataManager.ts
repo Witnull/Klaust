@@ -1,6 +1,7 @@
 import { EQUIPMENT_TYPES, PlayerData, Stats } from "../types/GameTypes";
 import { playerDataEvent } from "../EventBus";
 import { showToast } from "./ToastManager";
+import { generatePlayerSkills } from "../utils/GenRandomSkill";
 
 // Singleton class to manage player data
 export class PlayerDataManager {
@@ -21,9 +22,7 @@ export class PlayerDataManager {
             magic: 15,
             crit_chance: 5,
             crit_damage: 50,
-        };
-
-        // Generate a unique player ID
+        };        // Generate a unique player ID
         const playerId = `p_${Math.random().toString(36).substr(2, 7)}`;
 
         // Default player data
@@ -31,6 +30,9 @@ export class PlayerDataManager {
         const equipment = Object.fromEntries(
             equipmentSlots.map(slot => [slot, null])
         ) as Record<typeof equipmentSlots[number], null>;
+
+        // Generate initial skills for the player
+        const playerSkills = generatePlayerSkills(1, 1); // Initial level 1 player gets 1 skill
 
         const defaultData: PlayerData = {
             id: playerId,
@@ -53,6 +55,9 @@ export class PlayerDataManager {
             equipment,
             inventory: [],
             position: { x: 16, y: 16 },
+            skills: playerSkills,
+            equippedSkills: [],
+            equippedConsumables: [],
         };
 
         // Merge provided options with default data
@@ -131,6 +136,35 @@ export class PlayerDataManager {
             playerData.statsPoints += 3;
             showToast.congrats(`Level up!`, `You are now level ${playerData.level}`);
             this.tryLevelUp(playerData); // Check if multiple level ups are possible
+        }
+    }
+
+    /**
+     * Check if player should learn a new skill upon leveling up
+     * @param playerData Current player data
+     */
+    private checkForNewSkill(playerData: PlayerData): void {
+        // Chance to learn a new skill increases with level
+        // but decreases as the player accumulates more skills
+        const currentSkillCount = playerData.skills?.length || 0;
+        const baseChance = 0.3; // 30% base chance
+        const levelBonus = playerData.level * 0.02; // Each level adds 2%
+        const skillPenalty = currentSkillCount * 0.05; // Each skill reduces chance by 5%
+        
+        const chance = Math.min(0.8, Math.max(0.1, baseChance + levelBonus - skillPenalty));
+        
+        if (Math.random() < chance) {
+            // Generate a new skill appropriate for the player's level
+            const newSkill = generatePlayerSkills(playerData.level, 1)[0];
+            
+            // Add the new skill to the player's skills array
+            if (!playerData.skills) {
+                playerData.skills = [];
+            }
+            
+            playerData.skills.push(newSkill);
+            
+            showToast.congrats(`New Skill!`, `You learned ${newSkill.name}!`);
         }
     }
 

@@ -13,12 +13,12 @@ import { Button } from "@/components/ui/button"
 const StatsBar: React.FC<{ playerData: PlayerData }> = ({ playerData }) => {
 
     return (
-        <div className="bg-gray-800 text-gray-200 p-2 rounded-lg shadow-lg h-full w-full overflow-hidden">
+        <div className="text-gray-200 p-2 rounded-lg shadow-lg h-full w-full overflow-hidden">
             <Carousel >
                 <CarouselContent >
                     <CarouselItem key={1} >
                         <div className='flex flex-col  p-1 h-full mt-2'>
-                            <div className="rounded-lg flex flex-col *:even:bg-gray-600/50 h-38 overflow-y-auto overflow-x-hidden px-6 *:text-base *:h-6 *:text-gray-200" >
+                            <div className="rounded-lg flex flex-col *:even:bg-gray-600/50  h-38 overflow-y-auto overflow-x-hidden px-6 *:text-base *:h-6 *:text-gray-200" >
                                 <div>Atk: {playerDataManager.calcAttack(playerData)}</div>
                                 <div>Mag:  {playerDataManager.calcMagic(playerData)}</div>
                                 <div>Def: {playerDataManager.calcDefense(playerData)}</div>

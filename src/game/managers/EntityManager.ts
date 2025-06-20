@@ -2,12 +2,13 @@
 import Phaser from "phaser";
 import { Enemy } from "../entities/Enemy";
 import { playerDataManager } from "../managers/PlayerDataManager";
-import { generateRandomEquipment } from "../utils/GenRandomEquipment";
+import { generateRandomEquipment } from "../utils/GenRandomUtils";
 import { combatEvent } from "../EventBus";
 import { ChunkManager } from "./ChunkManager";
 import { showToast } from "./ToastManager";
 import { EnemyData } from "../types/GameTypes";
 import { v4 as uuid4 } from 'uuid';
+import { generateEnemySkills, generateRandomSkill } from "../utils/GenRandomSkill";
 
 
 export class EntityManager {
@@ -146,8 +147,7 @@ export class EntityManager {
                 this.openChest(chest, key);
             }
         });
-    }
-    private generateRandomEnemy(position: { x: number, y: number }): EnemyData {
+    }    private generateRandomEnemy(position: { x: number, y: number }): EnemyData {
         const plrLvl = playerDataManager.getPlayerData().level
         const level = Math.max(1, Math.floor(Phaser.Math.Between(plrLvl, plrLvl + 5 * Math.floor(plrLvl / 2) + 5) / 2));
         const enemyData: EnemyData = {
@@ -168,6 +168,8 @@ export class EntityManager {
                 crit_chance: Phaser.Math.Between(0, 0.5 * level / 2),
                 crit_damage: Phaser.Math.Between(0, 2 * level),
             },
+            // Generate random skills for the enemy
+            skills: generateEnemySkills(level),
         };
         enemyData.stats.hp = enemyData.stats.max_hp;
         enemyData.stats.mana = enemyData.stats.max_mana;
@@ -197,17 +199,19 @@ export class EntityManager {
             chestPositions.push({ x, y });
         }
         return chestPositions;
-    }
-
-    private openChest(chest: Phaser.GameObjects.Sprite, key: string) {
+    }    private openChest(chest: Phaser.GameObjects.Sprite, key: string) {
         const currentData = playerDataManager.getPlayerData();
         const rewardCoins = Phaser.Math.Between(15, 30);
         const coins = currentData.coins + rewardCoins;
         const itemChance = Math.random();
+        const skillChance = Math.random();
         const rewardEquipmentName: string[] = [];
+        const rewardSkillName: string[] = [];
         const inventory = [...currentData.inventory];
+        const skills = [...(currentData.skills || [])];
         const numberOfItems = Phaser.Math.Between(0, 3);
 
+        // 50% chance to find equipment items
         if (itemChance < 0.5) {
             for (let i = 0; i < numberOfItems; i++) {
                 const equipment = generateRandomEquipment({ level: currentData.level });
@@ -215,8 +219,16 @@ export class EntityManager {
                 rewardEquipmentName.push(equipment.name);
                 inventory.push(equipment);
             }
-            currentData.inventory = inventory;
         }
+
+        // 25% chance to find a skill
+        if (skillChance < 0.25) {
+            const newSkill = generateRandomSkill({ level: currentData.level });
+            console.log("Generated skill:", newSkill);
+            rewardSkillName.push(newSkill.name);
+            skills.push(newSkill);
+        }
+
         chest.destroy();
         this.chests.delete(key);
         const hitbox = this.chestHitboxes.get(key);
@@ -224,9 +236,29 @@ export class EntityManager {
             hitbox.destroy();
             this.chestHitboxes.delete(key);
         }
-        showToast.congrats("Collected treasure!", `+${rewardCoins} coins${rewardEquipmentName.length > 0 ? ", " + rewardEquipmentName.join(", ") : ""}`);
-        playerDataManager.updatePlayerData({ coins, inventory });
-
+        
+        // Create toast message for all rewards
+        let rewardMessage = "";
+        if (rewardCoins > 0) {
+            rewardMessage += `+${rewardCoins} coins`;
+        }
+        if (rewardEquipmentName.length > 0) {
+            rewardMessage += rewardMessage ? ", " : "";
+            rewardMessage += rewardEquipmentName.join(", ");
+        }
+        if (rewardSkillName.length > 0) {
+            rewardMessage += rewardMessage ? ", " : "";
+            rewardMessage += "Skill: " + rewardSkillName.join(", ");
+        }
+        
+        showToast.congrats("Collected treasure!", rewardMessage);
+        
+        // Update player data with all rewards
+        playerDataManager.updatePlayerData({ 
+            coins, 
+            inventory,
+            skills
+        });
     }
 
     toggleHitboxes(showBorders: boolean) {

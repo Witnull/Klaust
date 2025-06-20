@@ -46,12 +46,15 @@ export type ItemType = typeof ITEM_TYPES[number];
 export const RARITY_TYPES = ["common", "uncommon", "rare", "epic", "legendary", "mythic"] as const;
 export type RarityType = typeof RARITY_TYPES[number];
 
+export const ITEM_CLASS = ['equipment' , 'item' , 'skill'] as const; // Class to differentiate between equipment, items, and skills
+export type ItemsClassType = typeof ITEM_CLASS[number];
 
 export interface Equipment {
     id: string;
     name: string;
     description?: string;
     type: EquipmentType;
+    class: 'equipment'; // Class to differentiate from skills and items
     rarity: RarityType;
     levelRequired?: number;
     level?: number;
@@ -69,6 +72,7 @@ export interface Item {
     name: string;
     description?: string;
     type:  ItemType;
+    class: 'item'; // Class to differentiate from skills and equipment
     rarity: RarityType;
     level?: number;
     stats?: {
@@ -88,6 +92,7 @@ export interface StatusEffects {
         id: string; // Unique identifier for the poison effect
         duration: number; // in seconds
         number_of_hits?: number; // Optional for damage over time
+        type: "damage"; // Type of effect, in this case, damage
         amount: [3, 5, 7, 10, 20]; // Fixed damage value for poison
         level: number | 1;
         effect_based_on: 'maxhp';
@@ -97,6 +102,7 @@ export interface StatusEffects {
         id: string; // Unique identifier for the burn effect
         duration: number; // in seconds
         number_of_hits?: number; // Optional for damage over time
+        type: "damage"; // Type of effect, in this case, damage
         amount: [3, 5, 7, 10, 20]; // Fixed damage value for burn
         level: number | 1;
         effect_based_on: 'maxhp';
@@ -106,7 +112,8 @@ export interface StatusEffects {
         id: string; // Unique identifier for the chill effect
         duration: number; // in seconds
         number_of_hits?: number; // Optional for damage over time
-        amount: [3, 5, 7, 10, 20]; // Fixed damage value for burn
+        type: "damage"; // Type of effect, in this case, damage
+        amount: [3, 5, 7, 10, 20]; // Fixed damage value for chill
         level: number | 1;
         effect_based_on: 'maxhp';
         image?: string; 
@@ -115,6 +122,7 @@ export interface StatusEffects {
         id: string; // Unique identifier for the bleed effect
         duration: number; // in seconds
         number_of_hits?: number; // Optional for damage over time
+        type: "damage"; // Type of effect, in this case, damage
         amount: [3, 5, 7, 10, 20]; // Fixed damage value for bleed
         level: number | 1;
         effect_based_on: 'maxhp';
@@ -124,27 +132,32 @@ export interface StatusEffects {
         id: string; // Unique identifier for the freeze effect
         duration: number; // in seconds
         slow_percentage: number; // Percentage of speed reduction
+        type: "debuff"; // Type of effect, in this case, debuff
         image?: string; // Optional image for the freeze effect
     };
     stun?: {
         id: string; // Unique identifier for the stun effect
         duration: number; // in seconds
+        type: "debuff"; // Type of effect, in this case, debuff
         image?: string; // Optional image for the stun effect
     };
     silence?: {
         id: string; // Unique identifier for the silence effect
         duration: number; // in seconds
+        type: "debuff"; // Type of effect, in this case, debuff
         image?: string; // Optional image for the silence effect
     };
     blind?: {
         id: string; // Unique identifier for the blind effect
         duration: number; // in seconds
+        type:"debuff"; // Type of effect, in this case, debuff
         image?: string; // Optional image for the blind effect
     };
     heal_over_time?: {
         id: string; // Unique identifier for the heal over time effect
         duration: number; // in seconds
         number_of_hits?: number; // Optional for heal over time
+        type:"heal"; // Type of effect, in this case, heal
         amount: [3, 5, 7, 10, 25, 50, 75]; // Amount of healing per tick
         level: number | 1;
         effect_based_on: 'maxhp'; // Healing based on max HP
@@ -155,6 +168,7 @@ export interface StatusEffects {
         id: string; // Unique identifier for the buff
         duration: number; // in seconds
         stat: keyof Stats; // Stat to buff (e.g., 'attack', 'defense')
+        type: 'buff'; // Type of effect, in this case, buff
         amount: [10, 20, 30, 50, 70, 100, 150, 200, 500, 1000, 2500]; // Amount to buff the stat
         level: number | 1; // Level of the buff
         image?: string; // Optional image for the buff effect
@@ -163,6 +177,7 @@ export interface StatusEffects {
         id: string; // Unique identifier for the debuff
         duration: number; // in seconds
         stat: keyof Stats; // Stat to debuff (e.g., 'attack', 'defense')
+        type: 'debuff'; // Type of effect, in this case, debuff
         amount: [5, 10, 25, 50, 75, 90, 99]; // Amount to debuff the stat
         level: number | 1; // Level of the debuff
         image?: string; // Optional image for the debuff effect
@@ -177,8 +192,8 @@ export interface Skill {
     levelRequired: number | 0;
     manaCost: number | 0;
     cooldown: number | 0; // in seconds
+    class: 'skill';
     type: 'active' | 'passive'; // Active skills require activation, passive skills are always active
-    target: 'self' | 'enemy';
     damage_type: TypeOfDamage; // Type of damage dealt by the skill
     statusEffects?: Partial<StatusEffects>[]; // Optional status effects applied by the skill
     effects:{ // Direct hit effects of the skill
@@ -188,8 +203,11 @@ export interface Skill {
         number_of_hits?: number | 1; // Optional for damage over time or heal over time
     };
     image?: string; // Optional image for the skill
-   
+    actionCooldown?: number; // Cooldown for turn-based system, determines when the entity can act again
 }
+
+export type InventoryItemType = Item | Equipment | Skill;
+
 
 export interface PlayerData {
     id: string;
@@ -207,6 +225,8 @@ export interface PlayerData {
     equipment: Record<EquipmentType, Equipment | null>; // Record of equipment items
     inventory: (Equipment | Item)[]; // Array of items in inventory
     skills?: Skill[]; // Array of skills
+    equippedSkills?: Skill[]; // Array of equipped skills (max 4)
+    equippedConsumables?: Item[]; // Array of equipped consumable items (max 4)
     position: { x: number; y: number };
 }
 

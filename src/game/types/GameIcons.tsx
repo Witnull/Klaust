@@ -1,4 +1,5 @@
 import { Coins } from "lucide-react";
+import { Item } from './GameTypes';
 
 export const SlotIcons = {
     weapon: (
@@ -41,4 +42,20 @@ export const SlotIcons = {
             <path fill="currentColor" d="M12 10L8 4.4L9.6 2h4.8L16 4.4L12 10m3.5-3.2l-1.2 1.7c2.2.9 3.7 3 3.7 5.5c0 3.3-2.7 6-6 6s-6-2.7-6-6c0-2.5 1.5-4.6 3.7-5.5L8.5 6.8C5.8 8.1 4 10.8 4 14c0 4.4 3.6 8 8 8s8-3.6 8-8c0-3.2-1.8-5.9-4.5-7.2z" />
         </svg>
     ),
+    skill: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2v8"></path>
+            <path d="m4.93 10.93 1.41 1.41"></path>
+            <path d="M2 18h2"></path>
+            <path d="M20 18h2"></path>
+            <path d="m19.07 10.93-1.41 1.41"></path>
+            <path d="M22 22H2"></path>
+            <path d="m8 22 4-10 4 10"></path>
+        </svg>
+    ),
+    item: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+        </svg>
+    )
 };

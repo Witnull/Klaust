@@ -127,9 +127,10 @@ export function generateRandomEquipment(
         .filter(stat => Object.keys(stat).length > 0);
 
     return {
-        id: uuid4(),
+        id: "equip_" + uuid4(),
         name: `${rarity} ${type}`,
         type,
+        class: 'equipment', // Class to differentiate from skills and items
         rarity,
         level: level,
         stats: {
@@ -154,9 +155,10 @@ export function generateRandomItem(
     const rarities = RARITY_TYPES;
 
     return {
-        id: "i_" + uuid4(),
+        id: "item_" + uuid4(),
         name: `${rarity} ${type}`,
         type,
+        class: 'item', // Class to differentiate from skills and equipment
         rarity,
         level,
         stats: type === 'consumable' ? {

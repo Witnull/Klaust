@@ -43,10 +43,12 @@ const App: React.FC = () => {
     const hpPercent = (playerData.stats.hp / playerData.stats.max_hp) * 100;
     const manaPercent = (playerData.stats.mana / playerData.stats.max_mana) * 100;
 
+    const cardPfx = "bg-gray-700/90 rounded-md shadow-black-500/50 shadow-lg";
+
     return (
-        <div className="h-screen w-screen grid grid-cols-5 grid-rows-3 gap-4 bg-gray-500 p-4 overflow-hidden">
+        <div className="h-screen w-screen grid grid-cols-5 grid-rows-3 gap-4 bg-gray-600 p-4 overflow-hidden">
             {/* Cell 1: Player Name, Level, XP */}
-            <div className="gap-4 bg-gray-800 text-white p-4 rounded-lg drop-shadow-xl">
+            <div className={`gap-4 text-white p-3 ${cardPfx}`}>
 
                 <div className="col-span-1 flex flex-col">
                     <div className="text-2xl font-bold">
@@ -112,7 +114,7 @@ const App: React.FC = () => {
             {/*<div className="col-span-1 row-span-1" />*/}
 
             {/* Cell 234-789-12 13 14: Game Map */}
-            <div className="col-span-3 row-span-3 flex justify-center items-center">
+            <div className={`col-span-3 row-span-3 flex justify-center items-center ${cardPfx}`}>
                 <div
                     ref={gameRef}
                     id="game-container"
@@ -125,20 +127,17 @@ const App: React.FC = () => {
                 <CombatOverlay />
             </div>
             {/* Cell 5: Equipped Items */}
-            <div className="col-span-1 row-span-1 bg-gray-800 text-white p-4 rounded-lg shadow-lg flex flex-col">
-                <h3 className="text-lg font-bold mb-4 text-teal-600">
-                    Equipped
-                </h3>
+            <div className={`col-span-1 row-span-1  text-white p-3 ${cardPfx}`}>
                 <EquipmentGrid playerData={playerData} />
             </div>
 
             {/* Cell 11: Player Stats */}
-            <div className="col-span-1 row-span-1">
+            <div className={`col-span-1 row-span-1 ${cardPfx}`}>
                 <StatsBar playerData={playerData} />
             </div>
 
             {/* Cell 10 15: Inventory */}
-            <div className="col-span-1 row-span-2 bg-gray-800 text-white p-4 rounded-lg shadow-lg overflow-y-auto">
+            <div className={`col-span-1 row-span-2 text-white overflow-y-auto p-3 ${cardPfx}`}>
                 <Inventory
                     playerData={playerData}
                     onUpdate={(updatedData) =>
@@ -146,7 +145,7 @@ const App: React.FC = () => {
                     }
                 />
             </div>            {/* Cell 11: Save/Load */}
-            <div className="col-span-1 row-span-1 flex justify-center bg-gray-800 rounded-lg shadow-lg p-4">
+            <div className={`col-span-1 row-span-1 flex justify-center p-3 ${cardPfx}`}>
                 <SaveLoad playerData={playerData} />
                 <button
                     onClick={() => setShowAdminConsole(prev => !prev)}

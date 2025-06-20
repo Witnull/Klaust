@@ -1,6 +1,7 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { generateRandomEquipment, generateRandomItem } from '../utils/GenRandomEquipment';
+import { generateRandomEquipment, generateRandomItem } from '../utils/GenRandomUtils';
+import { generateRandomSkill } from '../utils/GenRandomSkill';
 import { playerDataManager } from '../managers/PlayerDataManager';
 import { PlayerData, EQUIPMENT_TYPES } from '../types/GameTypes';
 
@@ -101,7 +102,19 @@ export const AdminConsole: React.FC<{
 
         const handleAddExp = () => {
             playerDataManager.incXp(expAmount);
-        }; if (!isVisible) return null;
+        };
+        
+        const handleAddRandomSkill = () => {
+            // Generate a random skill based on player level
+            const newSkill = generateRandomSkill({ level: playerData.level });
+            
+            // Add it to the player's skills
+            const updatedSkills = [...(playerData.skills || []), newSkill];
+            
+            playerDataManager.updatePlayerData({
+                skills: updatedSkills
+            });
+        };if (!isVisible) return null;
 
         return (
             <div
@@ -146,10 +159,13 @@ export const AdminConsole: React.FC<{
                             <button onClick={handleClearInventory}
                                 className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md transition-colors">
                                 Clear Inventory
-                            </button>
-                            <button onClick={handleClearEquipment}
+                            </button>                            <button onClick={handleClearEquipment}
                                 className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md transition-colors">
                                 Clear Equipment
+                            </button>
+                            <button onClick={handleAddRandomSkill}
+                                className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-md transition-colors">
+                                Add Random Skill
                             </button>
                         </div>
                     </div>

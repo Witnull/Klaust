@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { EnemyData, Stats } from '../types/GameTypes';
+import { EnemyData } from '../types/GameTypes';
 
 export class Enemy {
     private sprite: Phaser.GameObjects.Sprite;

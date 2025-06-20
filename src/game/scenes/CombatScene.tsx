@@ -13,17 +13,17 @@ export default class CombatScene extends Phaser.Scene {
 
     init(data: { player: PlayerData; enemyData: EnemyData }) {
         this.combatManager = new CombatManager(data.player, data.enemyData);
-    }
-
+    }    
+    
     create() {
         // Define action handlers
         const handleNormalAttack = () => this.combatManager.normalAttack();
-        const handleFireball = () => this.combatManager.fireball();
+        const handleUseSkill = (skillId: string) => this.combatManager.useSkill(skillId);
         const handleFlee = () => this.combatManager.flee();
 
         // Register combat action listeners
         combatEvent.on('normalAttack', handleNormalAttack);
-        combatEvent.on('fireball', handleFireball);
+        combatEvent.on('useSkill', handleUseSkill);
         combatEvent.on('flee', handleFlee);
 
         // Start combat
@@ -37,11 +37,9 @@ export default class CombatScene extends Phaser.Scene {
             } else if (result === 'defeat') {
                 this.scene.start('GameScene'); // Restart on defeat
             }
-            this.scene.stop('CombatScene');
-
-            // Clean up listeners
+            this.scene.stop('CombatScene');            // Clean up listeners
             combatEvent.off('normalAttack', handleNormalAttack);
-            combatEvent.off('fireball', handleFireball);
+            combatEvent.off('useSkill', handleUseSkill);
             combatEvent.off('flee', handleFlee);
             combatEvent.off('combatEnd', handleCombatEnd);
         };
