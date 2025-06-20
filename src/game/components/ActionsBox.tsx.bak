@@ -1,0 +1,328 @@
+import React, { useState } from "react";
+import { playerDataManager } from "../managers/PlayerDataManager";
+import { combatEvent } from "../EventBus";
+import { PlayerData, EnemyData } from "../types/GameTypes";
+
+interface ActionsBoxProps {
+    player: PlayerData;
+    enemy: EnemyData;
+    currentTurn: "player" | "enemy";
+}
+
+export const ActionsBox: React.FC<ActionsBoxProps> = ({ player, enemy: _, currentTurn }) => {
+    // State to keep track of which section is active (skills or consumables)
+    const [activeTab, setActiveTab] = useState<'skills' | 'consumables'>('skills');
+
+    // Action Handlers
+    const handleNormalAttack = () => combatEvent.emit('normalAttack');
+    const handleUseSkill = (skillId: string) => combatEvent.emit('useSkill', skillId);
+    const handleFlee = () => combatEvent.emit('flee');
+    const handleUseConsumable = (itemId: string) => combatEvent.emit('useConsumable', itemId);
+
+    // Helper function to get cooldown display text
+    const getCooldownText = (skill: any): string | null => {
+        // This is a placeholder - your actual implementation might look different
+        // based on how cooldowns are stored in the skill object
+        const cooldownRemaining = skill.cooldownRemaining || 0;
+        return skill.cooldown ? `${cooldownRemaining}/${skill.cooldown}` : null;
+    };// Helper function to render skill buttons
+    const renderSkillButtons = () => {
+        if (!player.equippedSkills || player.equippedSkills.filter(skill => skill !== null).length === 0) {
+            return (
+                <div className="col-span-2 h-12 flex items-center justify-center text-gray-400 border border-gray-700 rounded-lg bg-gray-800/40">
+                    No skills equipped
+                </div>
+            );
+        }
+
+        return player.equippedSkills
+            .filter(skill => skill !== null)
+            .map((skill) => {
+                // Determine button color based on skill type
+                let buttonClass = "relative w-full h-12 ";
+                if (skill.effects.type === 'damage') {
+                    if (skill.damage_type === 'physical') {
+                        buttonClass += "bg-gradient-to-r from-red-800 to-gray-700";
+                    } else if (skill.damage_type === 'magical') {
+                        buttonClass += "bg-gradient-to-r from-indigo-800 to-gray-700";
+                    } else if (skill.damage_type === 'true') {
+                        buttonClass += "bg-gradient-to-r from-purple-800 to-gray-700";
+                    }
+                } else if (skill.effects.type === 'heal') {
+                    buttonClass += "bg-gradient-to-r from-green-800 to-gray-700";
+                } else if (skill.effects.type === 'buff') {
+                    buttonClass += "bg-gradient-to-r from-blue-800 to-gray-700";
+                } else if (skill.effects.type === 'debuff') {
+                    buttonClass += "bg-gradient-to-r from-yellow-800 to-gray-700";
+                }
+
+                buttonClass += " hover:to-amber-600 text-white py-1 px-2 rounded-md shadow-md transition-colors duration-200 overflow-hidden";
+
+                // Disable button if not player's turn or not enough mana
+                const isDisabled = currentTurn !== 'player' || player.stats.mana < skill.manaCost;
+                const cooldown = skill.cooldown && skill.cooldownRemaining ? `${skill.cooldownRemaining}/${skill.cooldown}` : null;
+                const onCooldown = cooldown && parseInt(cooldown.split('/')[0]) > 0;
+
+                return (
+                    <button
+                        key={skill.id}
+                        onClick={() => handleUseSkill(skill.id)}
+                        className={buttonClass + (isDisabled || onCooldown ? ' opacity-50 cursor-not-allowed' : '')}
+                        disabled={isDisabled || onCooldown}
+                        title={skill.description}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold">{skill.name}</p>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-blue-300">{skill.manaCost} MP</span>
+                                    {cooldown && (
+                                        <span className={`${onCooldown ? 'text-red-400' : 'text-green-400'} ml-2`}>{cooldown}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                );
+            });
+    };
+
+    // Helper function to render consumable buttons
+    const renderConsumableButtons = () => {
+        if (!player.equippedConsumables || player.equippedConsumables.filter(item => item !== null).length === 0) {
+            return (
+                <div className="col-span-2 h-12 flex items-center justify-center text-gray-400 border border-gray-700 rounded-lg bg-gray-800/40">
+                    No consumables equipped
+                </div>
+            );
+        }
+
+        return player.equippedConsumables
+            .filter(item => item !== null)
+            .map(item => {
+                if (!item) return null;
+
+                let buttonClass = "relative w-full h-12 ";
+
+                // Style consumables based on their effect
+                if (item.stats?.mainStat?.hp) {
+                    buttonClass += "bg-gradient-to-r from-green-800 to-gray-700";
+                } else if (item.stats?.mainStat?.mana) {
+                    buttonClass += "bg-gradient-to-r from-blue-800 to-gray-700";
+                } else {
+                    buttonClass += "bg-gradient-to-r from-amber-800 to-gray-700";
+                }
+
+                buttonClass += " hover:to-amber-600 text-white py-1 px-2 rounded-md shadow-md transition-colors duration-200 overflow-hidden";
+
+                // Disable button if not player's turn
+                const isDisabled = currentTurn !== 'player';
+
+                return (
+                    <button
+                        key={item.id}
+                        onClick={() => handleUseConsumable(item.id)}
+                        className={buttonClass + (isDisabled ? ' opacity-50 cursor-not-allowed' : '')}
+                        disabled={isDisabled}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold">{item.name}</p>
+                                <span className="text-xs">{
+                                    item.stats?.mainStat?.hp
+                                        ? `+${item.stats.mainStat.hp} HP`
+                                        : item.stats?.mainStat?.mana
+                                            ? `+${item.stats.mainStat.mana} MP`
+                                            : 'Consumable'
+                                }</span>
+                            </div>
+                        </div>
+                    </button>
+                );
+            });
+    };
+
+    return (
+        <div className="w-full flex flex-col gap-1">
+            {/* Main action buttons row */}
+            <div className="grid grid-cols-3 gap-2 mb-1">
+                <button
+                    onClick={handleNormalAttack}
+                    className="relative w-full h-12 bg-gradient-to-r from-gray-700 to-gray-600 hover:to-amber-600 text-white py-1 px-3 rounded-md shadow-md transition-colors duration-200 overflow-hidden"
+                    disabled={currentTurn !== 'player'}
+                >
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <p className="font-semibold text-base text-gray-200">Attack</p>
+                            <span className="text-xs text-gray-300">+{playerDataManager.calcManaGain(player)} mana</span>
+                        </div>
+                        <svg className="w-5 h-5" fill="#ffffff" viewBox="0 0 256 256" id="Flat" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" strokeWidth="0"></g><g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M224.48535,31.51465A11.9987,11.9987,0,0,0,216,28h-.03809l-63.79882.20117a11.99773,11.99773,0,0,0-8.84082,3.92774l-71.53418,78.6875-1.64649-1.64649a20.02681,20.02681,0,0,0-28.28418.002L25.17285,125.85645a19.9986,19.9986,0,0,0-.001,28.28515l14.05859,14.05957L20.11719,187.31348a20.02339,20.02339,0,0,0,0,28.28466l20.28515,20.2837a19.9992,19.9992,0,0,0,28.28418.00048l19.11231-19.11279,14.05957,14.06055a20.02636,20.02636,0,0,0,28.28418-.002l16.68457-16.68457a19.9986,19.9986,0,0,0,.001-28.28515l-1.645-1.64551,78.688-71.53418a12.00066,12.00066,0,0,0,3.92774-8.8418L228,40.03809A12.00167,12.00167,0,0,0,224.48535,31.51465ZM116,211.02979,101.94141,196.9707a19.9986,19.9986,0,0,0-28.28418,0L54.544,216.083,39.916,201.45605,59.0293,182.34277a20.02222,20.02222,0,0,0,0-28.28369L44.9707,140,56,128.97021l35.51221,35.5127.00244.00244.00244.00244L127.0293,200Zm87.81543-112.5542-75.62207,68.74707L116.9707,156l51.51465-51.51465a12.0001,12.0001,0,0,0-16.9707-16.9707L100,139.0293,88.77734,127.80615l68.74707-75.62158,46.4375-.14648Z"></path> </g></svg>
+                    </div>
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('skills')}
+                    className={`px-2 py-1 text-sm font-semibold rounded-md transition-colors ${activeTab === 'skills' ? 'bg-blue-700 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                >
+                    Skills
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('consumables')}
+                    className={`px-2 py-1 text-sm font-semibold rounded-md transition-colors ${activeTab === 'consumables' ? 'bg-green-700 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                >
+                    Items
+                </button>
+            </div>
+
+            {/* Flee button */}
+            <div className="flex justify-end mb-1">
+                <button
+                    onClick={handleFlee}
+                    className="w-24 h-8 bg-gradient-to-r from-red-900 to-gray-700 hover:to-amber-600 text-white py-1 px-2 rounded-md shadow-md transition-colors duration-200 text-sm"
+                    disabled={currentTurn !== 'player'}
+                >
+                    <div className="flex justify-between items-center">
+                        <span>Flee</span>
+                        <span className="text-xs">50%</span>
+                    </div>
+                </button>
+            </div>
+
+            {/* Skills and consumables section */}
+            <div className="grid grid-cols-2 gap-2 mt-1">
+                {activeTab === 'skills' ? renderSkillButtons() : renderConsumableButtons()}
+            </div>
+        </div>
+    );
+}
+// Determine button color based on skill type
+let buttonClass = "relative w-full h-16 ";
+if (skill.effects.type === 'damage') {
+    if (skill.damage_type === 'physical') {
+        buttonClass += "bg-gradient-to-r from-red-800 to-gray-600";
+    } else if (skill.damage_type === 'magical') {
+        buttonClass += "bg-gradient-to-r from-indigo-800 to-gray-600";
+    } else if (skill.damage_type === 'true') {
+        buttonClass += "bg-gradient-to-r from-purple-800 to-gray-600";
+    }
+} else if (skill.effects.type === 'heal') {
+    buttonClass += "bg-gradient-to-r from-green-800 to-gray-600";
+} else if (skill.effects.type === 'buff') {
+    buttonClass += "bg-gradient-to-r from-blue-800 to-gray-600";
+} else if (skill.effects.type === 'debuff') {
+    buttonClass += "bg-gradient-to-r from-yellow-800 to-gray-600";
+}
+
+buttonClass += " hover:to-amber-600 text-white py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 overflow-hidden";
+
+// Disable button if not player's turn or not enough mana
+const isDisabled = currentTurn !== 'player' || player.stats.mana < skill.manaCost;
+
+return (
+    <button
+        key={skill.id}
+        onClick={() => handleUseSkill(skill.id)}
+        className={buttonClass + (isDisabled ? ' opacity-50 cursor-not-allowed' : '')}
+        disabled={isDisabled}
+    >
+        <div className="absolute inset-0 flex items-center justify-end p-2">
+            {/* SVG icon based on skill type */}
+            {skill.effects.type === 'damage' && skill.damage_type === 'magical' && (
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" strokeWidth="0"></g><g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M3 13.1111C3 20.2222 8.28889 22 10.9333 22C12.2874 22 14.2481 21.6432 16 20.6097M18.7207 18C19.5021 16.7537 20 15.152 20 13.1111C20 8.58427 17.1653 5.35127 14.6023 3.49767C13.4438 2.65985 12 3.58 12 5.00971V5.33334C12 6.7752 11.3938 9.40705 9.70932 10.5017C8.84932 11.0606 7.92052 10.2241 7.816 9.20382L7.73017 8.36598C7.6304 7.39197 6.63841 6.80069 5.85996 7.39454C5.18794 7.90718 4.50139 8.60486 3.96944 9.5" stroke="#1C274C" strokeWidth="1.5" strokeLinecap="round"></path> <path d="M8 18.4445C8 21.2889 10.4889 22 11.7333 22C12.8222 22 15 21.2889 15 18.4445C15 17.3435 14.4107 16.6002 13.8404 16.1713C13.4424 15.872 12.8828 16.1408 12.7459 16.6196C12.5675 17.2437 11.9228 17.636 11.5944 17.0759C11.2941 16.5638 11.2941 15.7957 11.2941 15.3334C11.2941 14.6968 10.6539 14.2847 10.1389 14.6589C9.10649 15.4091 8 16.6815 8 18.4445Z" stroke="#1C274C" strokeWidth="1.5"></path> </g></svg>
+            )}
+            {/* Add more SVG icons for other skill types */}
+        </div>
+        <p className="relative z-10 text-left font-semibold text-lg text-gray-200">
+            {skill.name}
+            <span className="block text-xs">{skill.manaCost} mana</span>
+        </p>
+    </button>
+);
+                })}
+
+{/* Consumable Items Section */ }
+{
+    player.equippedConsumables?.filter(item => item !== null).map(item => {
+        if (!item) return null;
+
+        let buttonClass = "relative w-full h-16 ";
+
+        // Style consumables based on their effect
+        if (item.stats?.mainStat?.hp) {
+            buttonClass += "bg-gradient-to-r from-green-800 to-gray-600";
+        } else if (item.stats?.mainStat?.mana) {
+            buttonClass += "bg-gradient-to-r from-blue-800 to-gray-600";
+        } else {
+            buttonClass += "bg-gradient-to-r from-amber-800 to-gray-600";
+        }
+
+        buttonClass += " hover:to-amber-600 text-white py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 overflow-hidden";
+
+        // Disable button if not player's turn
+        const isDisabled = currentTurn !== 'player';
+
+        return (
+            <button
+                key={item.id}
+                onClick={() => handleUseConsumable(item.id)}
+                className={buttonClass + (isDisabled ? ' opacity-50 cursor-not-allowed' : '')}
+                disabled={isDisabled}
+            >
+                <div className="absolute inset-0 flex items-center justify-end p-2">
+                    {/* SVG icon based on item effect */}
+                    {item.stats?.mainStat?.hp && (
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12H15" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M12 9L12 15" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#ffffff" strokeWidth="1.5"></path></svg>
+                    )}
+                    {item.stats?.mainStat?.mana && (
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.8 14C8.8 16.21 10.59 18 12.8 18H18C19.1 18 20 17.1 20 16V15C20 13.9 19.1 13 18 13H16C16 11.9 15.1 11 14 11H12C10.9 11 10 11.9 10 13V14H8.82998C8.83998 14 8.8 14 8.8 14Z" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M4.8 14C4.8 11.79 6.59 10 8.8 10L10.69 10L12.2 8.5" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M21.5 2.5L16 8" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M15 2.5H21.5V9" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                    )}
+                </div>
+                <p className="relative z-10 text-left font-semibold text-lg text-gray-200">
+                    {item.name}
+                    <span className="block text-xs">{
+                        item.stats?.mainStat?.hp
+                            ? `+${item.stats.mainStat.hp} HP`
+                            : item.stats?.mainStat?.mana
+                                ? `+${item.stats.mainStat.mana} MP`
+                                : 'Consumable'
+                    }</span>
+                </p>
+            </button>
+        );
+    })
+}
+
+{/* If player has no equipped consumables or skills, show placeholders */ }
+{
+    (!player.equippedSkills || player.equippedSkills.filter(skill => skill !== null).length === 0) &&
+    (!player.equippedConsumables || player.equippedConsumables.filter(item => item !== null).length === 0) && (
+        <>
+            <div className="relative w-full h-16 bg-gray-700/50 text-white py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 overflow-hidden flex items-center justify-center">
+                <p className="text-gray-400 text-sm">No skills</p>
+            </div>
+            <div className="relative w-full h-16 bg-gray-700/50 text-white py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 overflow-hidden flex items-center justify-center">
+                <p className="text-gray-400 text-sm">No consumable</p>
+            </div>
+        </>
+    )
+}
+            </div >
+    <div className="flex items-center justify-center">
+        <button
+            onClick={handleFlee}
+            className="relative w-full h-16 bg-gradient-to-r from-gray-700 to-gray-600 hover:to-amber-600 text-white py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 overflow-hidden"
+            disabled={currentTurn !== 'player'}
+        >
+            <div className="absolute inset-0 flex items-center justify-end p-2">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" fill="#1C274C"><g id="SVGRepo_bgCarrier" strokeWidth="0"></g><g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g><g id="SVGRepo_iconCarrier"> <title>run_line</title> <g id="页面-1" stroke="none" strokeWidth="1" fill="none" fillRule="evenodd"> <g id="Transport" transform="translate(-816.000000, 0.000000)"> <g id="run_line" transform="translate(816.000000, 0.000000)"> <path d="M24,0 L24,24 L0,24 L0,0 L24,0 Z M12.5934901,23.257841 L12.5819402,23.2595131 L12.5108777,23.2950439 L12.4918791,23.2987469 L12.4918791,23.2987469 L12.4767152,23.2950439 L12.4056548,23.2595131 C12.3958229,23.2563662 12.3870493,23.2590235 12.3821421,23.2649074 L12.3780323,23.275831 L12.360941,23.7031097 L12.3658947,23.7234994 L12.3769048,23.7357139 L12.4804777,23.8096931 L12.4953491,23.8136134 L12.4953491,23.8136134 L12.5071152,23.8096931 L12.6106902,23.7357139 L12.6232938,23.7196733 L12.6232938,23.7196733 L12.6266527,23.7031097 L12.609561,23.275831 C12.6075724,23.2657013 12.6010112,23.2592993 12.5934901,23.257841 L12.5934901,23.257841 Z M12.8583906,23.1452862 L12.8445485,23.1473072 L12.6598443,23.2396597 L12.6498822,23.2499052 L12.6498822,23.2499052 L12.6471943,23.2611114 L12.6650943,23.6906389 L12.6699349,23.7034178 L12.6699349,23.7034178 L12.678386,23.7104931 L12.8793402,23.8032389 C12.8914285,23.8068999 12.9022333,23.8029875 12.9078286,23.7952264 L12.9118235,23.7811639 L12.8776777,23.1665331 C12.8752882,23.1545897 12.8674102,23.1470016 12.8583906,23.1452862 L12.8583906,23.1452862 Z M12.1430473,23.1473072 C12.1332178,23.1423925 12.1221763,23.1452606 12.1156365,23.1525954 L12.1099173,23.1665331 L12.0757714,23.7811639 C12.0751323,23.7926639 12.0828099,23.8018602 12.0926481,23.8045676 L12.108256,23.8032389 L12.3092106,23.7104931 L12.3186497,23.7024347 L12.3186497,23.7024347 L12.3225043,23.6906389 L12.340401,23.2611114 L12.337245,23.2485176 L12.337245,23.2485176 L12.3277531,23.2396597 L12.1430473,23.1473072 Z" id="MingCute" fillRule="nonzero" fill="#1C274C"></path> </g> </g> </g> </g></svg>
+            </div>
+            <p className="relative z-10 text-left font-semibold text-lg text-gray-200">
+                Flee
+                <span className="block text-xs">50%</span>
+            </p>
+        </button>
+    </div>
+        </div >
+    );
+};
