@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { combatEvent } from "../EventBus";
 import { EnemyData, PlayerData } from "../types/GameTypes";
 import { playerDataManager } from "../managers/PlayerDataManager";
-import {ActionsBox}  from "./ActionsBox";
+import { ActionsBox } from "./ActionsBox";
 
 interface DamagePopup {
     id: string;
@@ -17,7 +17,9 @@ interface DamagePopup {
 
 
 const CombatOverlay: React.FC = () => {
-    const [inCombat, setInCombat] = useState(false); const [player, setPlayer] = useState<PlayerData | null>(null);
+    const [inCombat, setInCombat] = useState(false);
+    const [combatResult, setCombatResult] = useState<"victory" | "defeat" | "fled" | null>(null);
+    const [player, setPlayer] = useState<PlayerData | null>(null);
     const [enemy, setEnemy] = useState<EnemyData | null>(null);
     const [isEnemyShaking, setIsEnemyShaking] = useState(false); // Track shake effect for enemy
     const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
@@ -67,13 +69,20 @@ const CombatOverlay: React.FC = () => {
             if (turnOrder) setTurnOrder(turnOrder);
         };
 
-        const handleCombatEnd = () => {
-            setInCombat(false);
-            setPlayer(null);
-            setEnemy(null);
-            setIsEnemyShaking(false);
-            setDamagePopups([]);
-            if (combatLogRef.current) combatLogRef.current.innerHTML = ''; // Clear log on combat end
+        const handleCombatEnd = ({ result, penaltyMessage }: { result: "victory" | "defeat" | "fled", penaltyMessage?: string }) => {
+            setCombatResult(result);
+            setCurrentTurn("player"); // Reset turn for display
+
+            // If there's a penalty message (from death), show it in combat log
+            if (penaltyMessage && combatLogRef.current) {
+                const logEntry = document.createElement('p');
+                logEntry.textContent = penaltyMessage;
+                logEntry.className = 'text-red-400 text-sm py-1 font-semibold';
+                combatLogRef.current.appendChild(logEntry);
+                combatLogRef.current.scrollTop = combatLogRef.current.scrollHeight;
+            }
+
+            // Don't close combat immediately, wait for user confirmation
         };
 
         const handleAttack = () => {
@@ -110,7 +119,7 @@ const CombatOverlay: React.FC = () => {
                 if (combatLogRef.current) {
                     const logEntry = document.createElement('p');
                     const skillText = data.skill ? ` using ${data.skill}` : '';
-                    logEntry.textContent = `${data.attacker}${skillText}: dealt ${data.damage} damage to ${data.target}`;
+                    logEntry.textContent = `${data.attacker}${skillText}: dealt ${Math.floor(data.damage)} damage to ${data.target}`;
                     logEntry.className = data.attacker === player?.name ? playerClass : enemyClass;
                     combatLogRef.current.appendChild(logEntry);
                     combatLogRef.current.scrollTop = combatLogRef.current.scrollHeight;
@@ -196,7 +205,7 @@ const CombatOverlay: React.FC = () => {
             // Add to combat log
             if (combatLogRef.current) {
                 const logEntry = document.createElement('p');
-                logEntry.textContent = `${data.target} healed for ${data.amount} HP`;
+                logEntry.textContent = `${data.target} healed for ${Math.floor(data.amount)} HP`;
                 logEntry.className = 'text-green-200 text-sm py-1';
                 combatLogRef.current.appendChild(logEntry);
                 combatLogRef.current.scrollTop = combatLogRef.current.scrollHeight;
@@ -243,15 +252,27 @@ const CombatOverlay: React.FC = () => {
             animationFrameId = requestAnimationFrame(animatePopups);
         };
         animationFrameId = requestAnimationFrame(animatePopups);
-        return () => cancelAnimationFrame(animationFrameId);    }, []);
+        return () => cancelAnimationFrame(animationFrameId);
+    }, []);
 
+
+    // Function to handle combat confirmation and cleanup
+    const handleCombatConfirmation = () => {
+        setInCombat(false);
+        setCombatResult(null);
+        setPlayer(null);
+        setEnemy(null);
+        setIsEnemyShaking(false);
+        setDamagePopups([]);
+        if (combatLogRef.current) combatLogRef.current.innerHTML = ''; // Clear log on combat end
+    };
 
     if (!inCombat || !player || !enemy) return null;
-    const p_hpPercent = (player.stats.hp / player.stats.max_hp) * 100;
-    const p_manaPercent = (player.stats.mana / player.stats.max_mana) * 100;
+    const p_hpPercent = Math.floor((player.stats.hp / player.stats.max_hp) * 100);
+    const p_manaPercent = Math.floor((player.stats.mana / player.stats.max_mana) * 100);
 
-    const e_hpPercent = (enemy.stats.hp / enemy.stats.max_hp) * 100;
-    const e_manaPercent = (enemy.stats.mana / enemy.stats.max_mana) * 100;
+    const e_hpPercent = Math.floor((enemy.stats.hp / enemy.stats.max_hp) * 100);
+    const e_manaPercent = Math.floor((enemy.stats.mana / enemy.stats.max_mana) * 100);
 
     return (
         <div className="absolute inset-0 z-50 flex justify-center items-center bg-black/75">
@@ -269,7 +290,7 @@ const CombatOverlay: React.FC = () => {
 
                                 <div className="">
                                     <p className="text-base font-medium">
-                                        Hp: {enemy.stats.hp} / {enemy.stats.max_hp}
+                                        Hp: {Math.floor(enemy.stats.hp)} / {Math.floor(enemy.stats.max_hp)}
                                     </p>
                                     <div className="w-full h-2 bg-gray-600 rounded-full overflow-hidden">
                                         <div
@@ -281,7 +302,7 @@ const CombatOverlay: React.FC = () => {
 
                                 <div className="">
                                     <p className="text-base font-medium">
-                                        Mp: {enemy.stats.mana} / {enemy.stats.max_mana}
+                                        Mp: {Math.floor(enemy.stats.mana)} / {Math.floor(enemy.stats.max_mana)}
                                     </p>
                                     <div className="w-full h-2 bg-gray-600 rounded-full overflow-hidden">
                                         <div
@@ -291,12 +312,12 @@ const CombatOverlay: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 text-sm font-medium">
-                                    <p>Attack: {enemy.stats.attack}</p>
-                                    <p>Magic: {enemy.stats.magic}</p>
-                                    <p>Defense: {enemy.stats.defense}</p>
-                                    <p>Speed: {enemy.stats.speed}</p>
-                                    <p>Crit: {enemy.stats.crit_chance}%</p>
-                                    <p>CritDmg: {enemy.stats.crit_damage}%</p>
+                                    <p>Attack: {Math.floor(enemy.stats.attack)}</p>
+                                    <p>Magic: {Math.floor(enemy.stats.magic)}</p>
+                                    <p>Defense: {Math.floor(enemy.stats.defense)}</p>
+                                    <p>Speed: {Math.floor(enemy.stats.speed)}</p>
+                                    <p>Crit: {Math.floor(enemy.stats.crit_chance)}%</p>
+                                    <p>CritDmg: {Math.floor(enemy.stats.crit_damage)}%</p>
                                 </div>
                             </div>
 
@@ -359,17 +380,17 @@ const CombatOverlay: React.FC = () => {
                                     {/* Player effects */}
                                 </div>
                                 <div className="grid grid-cols-3 text-sm font-medium">
-                                    <p>Attack: {playerDataManager.calcAttack(player)}</p>
-                                    <p>Magic: {playerDataManager.calcMagic(player)}</p>
-                                    <p>Defense: {playerDataManager.calcDefense(player)}</p>
-                                    <p>Speed: {playerDataManager.calcSpeed(player)}</p>
-                                    <p>Crit: {playerDataManager.calcCrit(player)}%</p>
-                                    <p>CritDmg: {playerDataManager.calcCritDamage(player)}%</p>
+                                    <p>Attack: {Math.floor(playerDataManager.calcAttack(player))}</p>
+                                    <p>Magic: {Math.floor(playerDataManager.calcMagic(player))}</p>
+                                    <p>Defense: {Math.floor(playerDataManager.calcDefense(player))}</p>
+                                    <p>Speed: {Math.floor(playerDataManager.calcSpeed(player))}</p>
+                                    <p>Crit: {Math.floor(playerDataManager.calcCrit(player))}%</p>
+                                    <p>CritDmg: {Math.floor(playerDataManager.calcCritDamage(player))}%</p>
                                 </div>
 
                                 <div className="f">
                                     <p className="text-base font-medium">
-                                        Hp: {player.stats.hp} / {playerDataManager.calcMaxHP(player)}
+                                        Hp: {Math.floor(player.stats.hp)} / {Math.floor(playerDataManager.calcMaxHP(player))}
                                     </p>
                                     <div className="w-full h-2 bg-gray-600 rounded-full overflow-hidden">
                                         <div
@@ -381,7 +402,7 @@ const CombatOverlay: React.FC = () => {
 
                                 <div className="">
                                     <p className="text-base font-medium">
-                                        Mp: {player.stats.mana} / {playerDataManager.calcmax_mana(player)}
+                                        Mp: {Math.floor(player.stats.mana)} / {Math.floor(playerDataManager.calcmax_mana(player))}
                                     </p>
                                     <div className="w-full h-2 bg-gray-600 rounded-full overflow-hidden">
                                         <div
@@ -420,15 +441,15 @@ const CombatOverlay: React.FC = () => {
                                     transform: 'translate(50%, -50%)',
                                 }}
                             >
-                                -{popup.damage}
+                                -{Math.floor(popup.damage)}
                             </div>
                         ))}
                     </div>
-                <ActionsBox 
-                    player={player!} 
-                    enemy={enemy!} 
-                    currentTurn={currentTurn}
-                />        
+                    <ActionsBox
+                        player={player!}
+                        enemy={enemy!}
+                        currentTurn={combatResult ? "enemy" : currentTurn} // Disable actions if combat ended
+                    />
                 </div>
 
 
@@ -443,6 +464,34 @@ const CombatOverlay: React.FC = () => {
 
 
             </div>
+
+            {/* Combat Result Confirmation Dialog */}
+            {combatResult && (
+                <div className="absolute inset-0 z-60 flex justify-center items-center bg-black/85">
+                    <div className="bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 border-2 border-gray-600">
+                        <div className="text-center">
+                            <h2 className={`text-3xl font-bold mb-4 ${combatResult === 'victory' ? 'text-green-400' :
+                                    combatResult === 'defeat' ? 'text-red-400' : 'text-yellow-400'
+                                }`}>
+                                {combatResult === 'victory' ? 'Victory!' :
+                                    combatResult === 'defeat' ? 'Defeated!' : 'Fled!'}
+                            </h2>
+
+                            <p className="text-gray-300 mb-6">
+                                {combatResult === 'victory' ? 'You have emerged victorious!' :
+                                    combatResult === 'defeat' ? 'You have been defeated...' : 'You have fled from battle!'}
+                            </p>
+
+                            <button
+                                onClick={handleCombatConfirmation}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200"
+                            >
+                                Continue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

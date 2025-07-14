@@ -28,7 +28,7 @@ export const ItemPopup: React.FC<ItemPopupProps> = ({ item, onEquip, onUnequip, 
                             if (value === undefined || value === 0) return null; // Skip undefined or zero values
                             return (
                                 <p key={statName} className="font-semibold text-lg text-gray-300">
-                                    {capitalizeFirstLetter(statName)}: {value}
+                                    {capitalizeFirstLetter(statName)}: {typeof value === 'number' ? Math.floor(value) : value}
                                 </p>
                             );
                         })}
@@ -36,7 +36,7 @@ export const ItemPopup: React.FC<ItemPopupProps> = ({ item, onEquip, onUnequip, 
                             <div key={index}>
                                 {Object.entries(subStat).map(([statName, value]) => (
                                     <p key={statName} className="text-sm text-gray-300">
-                                        {capitalizeFirstLetter(statName)}: {value}
+                                        {capitalizeFirstLetter(statName)}: {typeof value === 'number' ? Math.floor(value) : value}
                                     </p>
                                 ))}
                             </div>
@@ -45,7 +45,7 @@ export const ItemPopup: React.FC<ItemPopupProps> = ({ item, onEquip, onUnequip, 
                 )}
             </div>
             <p className="text-sm mt-2">Value: {item.value} Coins</p>
-            {onEquip && (item.class === "equipment" || (item.class === "item" && item.type ==="consumable" )) && (
+            {onEquip && (item.class === "equipment" || (item.class === "item" && item.type === "consumable")) && (
                 <button
                     onClick={onEquip}
                     className="mt-2 bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700"
@@ -53,7 +53,7 @@ export const ItemPopup: React.FC<ItemPopupProps> = ({ item, onEquip, onUnequip, 
                     Equip
                 </button>
             )}
-            {onUnequip && (item.class === "equipment" || (item.class === "item" && item.type ==="consumable" )) && (
+            {onUnequip && (item.class === "equipment" || (item.class === "item" && item.type === "consumable")) && (
                 <button
                     onClick={onUnequip}
                     className="mt-2 bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 ml-2"

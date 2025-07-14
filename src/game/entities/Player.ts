@@ -1,5 +1,4 @@
 import Phaser from "phaser";
-import { PlayerData } from "../types/GameTypes";
 
 export class Player {
     private sprite: Phaser.GameObjects.Sprite;
@@ -19,14 +18,15 @@ export class Player {
     private setInitialScale() {
         const scaleFactor = this.scene.cameras.main.width / (32 * 16);
         this.sprite.setScale(scaleFactor);
-    } move(playerPos: { x: number; y: number }) {
+    } move(playerPos: { x: number; y: number }, isDiagonal: boolean = false) {
         this.spritePos = playerPos;
+        const duration = isDiagonal ? 180 : 150; // Slightly longer for diagonal movement
         this.scene.tweens.add({
             targets: this.sprite,
             x: playerPos.x,
             y: playerPos.y,
-            duration: 280,
-            ease: "Linear",
+            duration: duration,
+            ease: "Power2", // Changed from Linear for smoother feel
             onComplete: () => {
                 // Ensure sprite is exactly at the correct position when complete
                 this.sprite.setPosition(playerPos.x, playerPos.y);

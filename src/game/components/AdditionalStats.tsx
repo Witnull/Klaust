@@ -19,12 +19,12 @@ const StatsBar: React.FC<{ playerData: PlayerData }> = ({ playerData }) => {
                     <CarouselItem key={1} >
                         <div className='flex flex-col  p-1 h-full mt-2'>
                             <div className="rounded-lg flex flex-col *:even:bg-gray-600/50  h-38 overflow-y-auto overflow-x-hidden px-6 *:text-base *:h-6 *:text-gray-200" >
-                                <div>Atk: {playerDataManager.calcAttack(playerData)}</div>
-                                <div>Mag:  {playerDataManager.calcMagic(playerData)}</div>
-                                <div>Def: {playerDataManager.calcDefense(playerData)}</div>
-                                <div>Spd: {playerDataManager.calcSpeed(playerData)}</div>
-                                <div>Crit%: {playerDataManager.calcCrit(playerData)}</div>
-                                <div>CritDmg%: {playerDataManager.calcCritDamage(playerData)}</div>
+                                <div>Atk: {Math.floor(playerDataManager.calcAttack(playerData))}</div>
+                                <div>Mag:  {Math.floor(playerDataManager.calcMagic(playerData))}</div>
+                                <div>Def: {Math.floor(playerDataManager.calcDefense(playerData))}</div>
+                                <div>Spd: {Math.floor(playerDataManager.calcSpeed(playerData))}</div>
+                                <div>Crit%: {Math.floor(playerDataManager.calcCrit(playerData))}</div>
+                                <div>CritDmg%: {Math.floor(playerDataManager.calcCritDamage(playerData))}</div>
                             </div>
                         </div>
                     </CarouselItem>

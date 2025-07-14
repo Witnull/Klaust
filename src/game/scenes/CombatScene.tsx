@@ -34,11 +34,12 @@ export default class CombatScene extends Phaser.Scene {
         // Handle combat end
         const handleCombatEnd = ({ result }: { result: 'victory' | 'defeat' | 'fled' }) => {
             console.log(`CombatScene: combatEnd received with result: ${result}`);
-            if (result === 'victory' || result === 'fled') {
-                this.scene.resume('GameScene');
-            } else if (result === 'defeat') {
-                this.scene.start('GameScene'); // Restart on defeat
-            }
+            // if (result === 'victory' || result === 'fled') {
+            //     this.scene.resume('GameScene');
+            // } else if (result === 'defeat') {
+            //     this.scene.start('GameScene'); // Restart on defeat
+            // }
+            this.scene.resume('GameScene');
             this.scene.stop('CombatScene');            // Clean up listeners
             combatEvent.off('normalAttack', handleNormalAttack);
             combatEvent.off('useSkill', handleUseSkill);

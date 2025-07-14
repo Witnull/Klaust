@@ -5,14 +5,14 @@ import { CONFIG } from "../config";
 import { playerDataManager } from "./PlayerDataManager";
 import { MapExporter } from "./MapExporter";
 import { EntityManager } from "./EntityManager";
-import { generationEvent } from "../EventBus";
-import { Flashlight } from "lucide-react";
+
 
 interface ChunkData {
     map: number[][];
     tilemap: Phaser.Tilemaps.Tilemap;
     neighbors: { top?: string; bottom?: string; left?: string; right?: string };
     rooms: Room[];
+    noiseSprite?: Phaser.GameObjects.Sprite; // Track noise sprite for cleanup
 }
 
 export class ChunkManager {
@@ -45,13 +45,15 @@ export class ChunkManager {
         const chunkX = 0;
         const chunkY = 0;
         const chunkKey = `${chunkX},${chunkY}`;
-        const { map: chunkMap, rooms, chests } = this.mapGenerator.generateChunk(chunkX, chunkY, true);
+        const { map: chunkMap, rooms } = this.mapGenerator.generateChunk(chunkX, chunkY, true);
 
+        const tilemap = this.createTilemap(chunkMap, 0, 0);
         this.chunks.set("0,0", {
             map: chunkMap,
-            tilemap: this.createTilemap(chunkMap, 0, 0),
+            tilemap: tilemap.tilemap,
             neighbors: {},
             rooms,
+            noiseSprite: tilemap.noiseSprite,
         });
         this.fullMapRooms.set(chunkKey, rooms);
 
@@ -122,8 +124,8 @@ export class ChunkManager {
             right: `${chunkX + 1},${chunkY}`,
         };
 
-        const tilemap = this.createTilemap(map, chunkX, chunkY);
-        this.chunks.set(chunkKey, { map, tilemap, neighbors, rooms });
+        const tilemapData = this.createTilemap(map, chunkX, chunkY);
+        this.chunks.set(chunkKey, { map, tilemap: tilemapData.tilemap, neighbors, rooms, noiseSprite: tilemapData.noiseSprite });
         this.fullMapRooms.set(chunkKey, rooms);
 
         // Connect to adjacent chunks (optimized to 1-2 connections)
@@ -235,6 +237,9 @@ export class ChunkManager {
         const chunk = this.chunks.get(key);
         if (chunk) {
             chunk.tilemap.destroy();
+            if (chunk.noiseSprite) {
+                chunk.noiseSprite.destroy();
+            }
             this.chunks.delete(key);
             this.fullMapRooms.delete(key);
         }
@@ -250,7 +255,7 @@ export class ChunkManager {
         }
     }
 
-    private createTilemap(map: number[][], chunkX: number, chunkY: number): Phaser.Tilemaps.Tilemap {
+    private createTilemap(map: number[][], chunkX: number, chunkY: number): { tilemap: Phaser.Tilemaps.Tilemap; noiseSprite: Phaser.GameObjects.Sprite } {
         const tilemap = this.gameScene.make.tilemap({
             data: map,
             tileWidth: CONFIG.TILE_SIZE,
@@ -262,7 +267,12 @@ export class ChunkManager {
             const layer = tilemap.createLayer(0, tileset, chunkX * this.chunkSize * 16, chunkY * this.chunkSize * 16);
             layer!.setDepth(0);
         }
-        return tilemap;
+        const noiseSprite = this.gameScene.add.sprite(chunkX * this.chunkSize * 16, chunkY * this.chunkSize * 16, 'noise');
+        noiseSprite.setOrigin(0, 0); // Set origin to top-left corner
+        noiseSprite.setDisplaySize(map.length * CONFIG.TILE_SIZE, map[0].length * CONFIG.TILE_SIZE); // Match tilemap size
+        noiseSprite.setAlpha(0.15); // Set semi-transparency (adjust as needed)
+        noiseSprite.setDepth(1); // Render above tilemap layer
+        return { tilemap, noiseSprite };
     }
 
     private updateTiles(chunkKey: string, map: number[][], x1: number, y1: number, x2: number, y2: number) {

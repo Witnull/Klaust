@@ -163,12 +163,12 @@ export class CombatManager {
 
         // Look for skill in both skills and equippedSkills arrays
         let skill_info = this.playerData.skills?.find(skill => skill.id === skill_id);
-        
+
         // If not found in skills, check equippedSkills
         if (!skill_info && this.playerData.equippedSkills) {
             skill_info = this.playerData.equippedSkills.find(skill => skill && skill.id === skill_id);
         }
-        
+
         if (!skill_info) {
             console.error(`Skill with ID ${skill_id} not found in skills or equippedSkills`);
             showToast.congrats("Skill Error", "Skill not found");
@@ -367,8 +367,8 @@ export class CombatManager {
         this.insertTurn("player", actionCD);
 
         this.nextTurn();
-    } 
-    
+    }
+
     flee(): void {
         if (this.turn !== "player") return;
 
@@ -475,19 +475,19 @@ export class CombatManager {
         }
 
         if (this.playerData.stats.hp <= 0) {
-            playerDataManager.updatePlayerData(this.playerData);
-            combatEvent.emit("combatEnd", { result: "defeat" });
+            // Apply death penalty
+            const { penaltyData, penaltyMessage } = this.applyDeathPenalty();
+            playerDataManager.updatePlayerData(penaltyData);
+            combatEvent.emit("combatEnd", { result: "defeat", penaltyMessage });
             console.log("Combat ended: Player loses");
-            showToast.congrats("Batlle lost!", `You lost the battle`);
             return true;
         }
 
         if (this.isFled && this.playerData.stats.hp > 0) {
-            
             playerDataManager.updatePlayerData(this.playerData);
             combatEvent.emit("combatEnd", { result: "fled" });
             console.log("Combat ended: Player flees");
-            showToast.congrats("Batlle fled!", `You have fled the battle`);
+            // Remove redundant toast - EntityManager will handle the "Escaped!" message
             return true;
         }
 
@@ -497,7 +497,7 @@ export class CombatManager {
     /**
      * Applies status effects from a skill to either the player or enemy
      * @param skill The skill containing status effects to apply
-     */    
+     */
     private applyStatusEffects(skill: Skill): void {
         if (!skill.statusEffects || skill.statusEffects.length === 0) return;
 
@@ -750,7 +750,7 @@ export class CombatManager {
 
         // Remove expired effects
         this.statusEffects = this.statusEffects.filter(effect => !effectsToRemove.includes(effect.id));
-    }    useConsumable(itemId: string): void {
+    } useConsumable(itemId: string): void {
         if (this.turn !== "player") return;
 
         // Look for consumable in equippedConsumables
@@ -771,7 +771,7 @@ export class CombatManager {
         // Apply the consumable's effects
         if (item.stats?.mainStat) {
             const stats = item.stats.mainStat;
-            
+
             // Heal HP
             if (stats.hp) {
                 const healAmount = stats.hp;
@@ -782,7 +782,7 @@ export class CombatManager {
                     amount: healAmount
                 });
             }
-            
+
             // Restore Mana
             if (stats.mana) {
                 const manaAmount = stats.mana;
@@ -793,17 +793,17 @@ export class CombatManager {
                     amount: manaAmount
                 });
             }
-            
+
             // Apply temporary buffs (attack, defense, etc.)
             Object.entries(stats).forEach(([statKey, statValue]) => {
                 if (statKey !== 'hp' && statKey !== 'mana' && statValue) {
                     const stat = statKey as keyof Stats;
                     // For demonstration, apply a 3-turn buff
                     const duration = 3;
-                    
+
                     // Generate a unique ID for this status effect
                     const effectId = `${item.name}_${stat}_${Date.now()}`;
-                    
+
                     this.statusEffects.push({
                         id: effectId,
                         target: "player",
@@ -817,11 +817,11 @@ export class CombatManager {
                             value: statValue
                         }
                     });
-                    
+
                     // Apply the buff immediately
                     this.playerData.stats[stat] += statValue;
                     console.log(`Used ${item.name}: Buffed ${stat} by ${statValue} for ${duration} turns`);
-                    
+
                     // Notify the UI
                     combatEvent.emit("showBuff", {
                         target: "player",
@@ -832,12 +832,62 @@ export class CombatManager {
                 }
             });
         }
-        
+
         // Remove the consumable after use (reduce quantity or remove if quantity is 1)
         // Note: The actual removal will be handled at a higher level (SkillManager or EquipmentManager)
         combatEvent.emit("consumableUsed", itemId);
-        
+
         // End the player's turn
         this.nextTurn();
+    }
+
+    // Apply death penalty to player (XP, coins, and items)
+    private applyDeathPenalty() {
+        const currentData = playerDataManager.getPlayerData();
+
+        // Calculate XP penalty - lose 15% of current XP, but minimum of 10% of what's needed for next level
+        const xpRequired = playerDataManager.calcXpRequired(currentData);
+        const minXpLoss = Math.floor(xpRequired * 0.1);
+        const currentXpLoss = Math.floor(currentData.xp * 0.15);
+        const xpLoss = Math.max(minXpLoss, currentXpLoss);
+
+        // Calculate coins penalty - lose 20% of current coins
+        const coinsLoss = Math.floor(currentData.coins * 0.2);
+
+        // Item penalty - lose 25% of items (random selection)
+        const itemsToLose = Math.floor(currentData.inventory.length * 0.25);
+        const newInventory = [...currentData.inventory];
+
+        const lostItems: string[] = [];
+        for (let i = 0; i < itemsToLose; i++) {
+            if (newInventory.length > 0) {
+                const randomIndex = Math.floor(Math.random() * newInventory.length);
+                const lostItem = newInventory.splice(randomIndex, 1)[0];
+                lostItems.push(lostItem.name);
+            }
+        }
+
+        // Apply penalties
+        const newXp = Math.max(0, currentData.xp - xpLoss);
+        const newCoins = Math.max(0, currentData.coins - coinsLoss);
+
+        // Update player data
+        const penaltyData = {
+            xp: newXp,
+            coins: newCoins,
+            inventory: newInventory,
+            stats: { ...currentData.stats, hp: Math.floor(currentData.stats.max_hp * 0.1) } // Revive with 10% HP
+        };
+
+        // Show penalty message
+        let penaltyMessage = "Death penalty applied: ";
+        const penalties = [];
+        if (xpLoss > 0) penalties.push(`-${xpLoss} XP`);
+        if (coinsLoss > 0) penalties.push(`-${coinsLoss} coins`);
+        if (lostItems.length > 0) penalties.push(`Lost: ${lostItems.join(', ')}`);
+
+        penaltyMessage += penalties.join(', ');
+
+        return { penaltyData, penaltyMessage };
     }
 }

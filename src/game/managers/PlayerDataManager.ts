@@ -128,6 +128,14 @@ export class PlayerDataManager {
         this.eventBus.emit("playerDataUpdated", this.getPlayerData());
     }
 
+    // Update player data silently without emitting events (for frequent position updates)
+    public updatePlayerDataSilent(updates: Partial<PlayerData>): void {
+        // Only allow position updates for silent updates to avoid issues
+        if (updates.position) {
+            this.playerData = { ...this.playerData, position: updates.position };
+        }
+    }
+
     private tryLevelUp(playerData: PlayerData): void {
         const xpRequired = this.calcXpRequired(playerData);
         if (playerData.xp >= xpRequired) {
@@ -135,11 +143,12 @@ export class PlayerDataManager {
             playerData.level++;
             playerData.statsPoints += 3;
             showToast.congrats(`Level up!`, `You are now level ${playerData.level}`);
+            this.checkForNewSkill(playerData); // Check for new skills on level up
             this.tryLevelUp(playerData); // Check if multiple level ups are possible
         }
     }
 
-    
+
 
     /**
      * Check if player should learn a new skill upon leveling up
@@ -152,20 +161,20 @@ export class PlayerDataManager {
         const baseChance = 0.3; // 30% base chance
         const levelBonus = playerData.level * 0.02; // Each level adds 2%
         const skillPenalty = currentSkillCount * 0.05; // Each skill reduces chance by 5%
-        
+
         const chance = Math.min(0.8, Math.max(0.1, baseChance + levelBonus - skillPenalty));
-        
+
         if (Math.random() < chance) {
             // Generate a new skill appropriate for the player's level
             const newSkill = generatePlayerSkills(playerData.level, 1)[0];
-            
+
             // Add the new skill to the player's skills array
             if (!playerData.skills) {
                 playerData.skills = [];
             }
-            
+
             playerData.skills.push(newSkill);
-            
+
             showToast.congrats(`New Skill!`, `You learned ${newSkill.name}!`);
         }
     }

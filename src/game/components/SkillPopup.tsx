@@ -18,18 +18,17 @@ export const SkillPopup: React.FC<SkillPopupProps> = ({ skill, onEquip, onUnequi
                 <span className={`${TagPfx} bg-blue-700 text-blue-200`}>Skill</span>
                 <span className={`${TagPfx} bg-purple-700 text-purple-200`}>{capitalizeFirstLetter(skill.type)}</span>
                 {skill.damage_type && (
-                    <span className={`${TagPfx} ${
-                        skill.damage_type === 'physical' ? 'bg-red-700 text-red-200' :
-                        skill.damage_type === 'magical' ? 'bg-indigo-700 text-indigo-200' :
-                        'bg-purple-700 text-purple-200'
-                    }`}>
+                    <span className={`${TagPfx} ${skill.damage_type === 'physical' ? 'bg-red-700 text-red-200' :
+                            skill.damage_type === 'magical' ? 'bg-indigo-700 text-indigo-200' :
+                                'bg-purple-700 text-purple-200'
+                        }`}>
                         {capitalizeFirstLetter(skill.damage_type)}
                     </span>
                 )}
             </div>
 
             {skill.levelRequired > 0 && <p className="text-sm text-gray-300 font-bold">Required Level: {skill.levelRequired}</p>}
-            <p className="text-sm text-gray-300">Mana Cost: {skill.manaCost}</p>
+            <p className="text-sm text-gray-300">Mana Cost: {Math.floor(skill.manaCost)}</p>
             <p className="text-sm text-gray-300">Cooldown: {skill.cooldown}s</p>
 
             {skill.description && (
@@ -40,8 +39,8 @@ export const SkillPopup: React.FC<SkillPopupProps> = ({ skill, onEquip, onUnequi
 
             <div className="mt-2 max-h-32 overflow-y-auto">
                 <p className="text-sm">
-                    {skill.effects.type === 'damage' && `Deals ${skill.effects.value} ${skill.damage_type} damage`}
-                    {skill.effects.type === 'heal' && `Heals for ${skill.effects.value} HP`}
+                    {skill.effects.type === 'damage' && `Deals ${Math.floor(skill.effects.value)} ${skill.damage_type} damage`}
+                    {skill.effects.type === 'heal' && `Heals for ${Math.floor(skill.effects.value)} HP`}
                     {skill.effects.type === 'buff' && `Buffs for ${skill.effects.duration}s`}
                     {skill.effects.type === 'debuff' && `Debuffs for ${skill.effects.duration}s`}
                 </p>
@@ -55,8 +54,8 @@ export const SkillPopup: React.FC<SkillPopupProps> = ({ skill, onEquip, onUnequi
                                     effectName !== 'id' && (
                                         <p key={effectName}>
                                             {capitalizeFirstLetter(effectName)}: {
-                                                typeof effectData === 'object' 
-                                                    ? JSON.stringify(effectData) 
+                                                typeof effectData === 'object'
+                                                    ? JSON.stringify(effectData)
                                                     : effectData
                                             }
                                         </p>

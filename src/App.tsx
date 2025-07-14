@@ -63,7 +63,7 @@ const App: React.FC = () => {
                             Lv:{" " + playerData.level}
                         </span>
                         <span className="text-sm">
-                            Xp:{" " + playerData.xp + " /" + playerDataManager.calcXpRequired(playerData)}
+                            Xp:{" " + Math.floor(playerData.xp) + " /" + playerDataManager.calcXpRequired(playerData)}
                         </span>
                     </div>
 
@@ -72,7 +72,7 @@ const App: React.FC = () => {
                             <div
                                 className="bg-linear-to-r from-purple-200 to-indigo-600 h-full rounded-full transition-all duration-300"
                                 style={{
-                                    width: `${((playerData.xp) /
+                                    width: `${(playerData.xp /
                                         playerDataManager.calcXpRequired(playerData)) * 100
                                         }%`,
                                 }}
@@ -81,7 +81,7 @@ const App: React.FC = () => {
                     </div>
 
                     <div className="mb-1">
-                        <span> Hp: {playerData.stats.hp + " /" + playerData.stats.max_hp}</span>
+                        <span> Hp: {Math.floor(playerData.stats.hp) + " /" + playerData.stats.max_hp}</span>
                         <div className="w-full bg-gray-300 rounded-full h-2.5">
                             <div
                                 className="bg-linear-to-r from-red-400 to-green-600 h-full rounded-full transition-all duration-300"
@@ -96,14 +96,14 @@ const App: React.FC = () => {
                                 style={{ width: `${manaPercent}%` }}
                             />
                         </div>
-                        <span className="text-sm" >Mp: {playerData.stats.mana + " /" + playerData.stats.max_mana}</span>
+                        <span className="text-sm" >Mp: {Math.floor(playerData.stats.mana) + " /" + playerData.stats.max_mana}</span>
                     </div>
 
                     <span className="text-gray-400 text-sm">
-                        X: {playerData.position.x} - Y: {playerData.position.y}
+                        X: {Math.floor(playerData.position.x)} - Y: {Math.floor(playerData.position.y)}
                     </span>
                     <span className="text-amber-300">
-                        Coins: {playerData.coins}
+                        Coins: {Math.floor(playerData.coins)}
                     </span>
 
                 </div>

@@ -3,7 +3,7 @@ import Phaser from "phaser";
 import { Enemy } from "../entities/Enemy";
 import { playerDataManager } from "../managers/PlayerDataManager";
 import { generateRandomEquipment } from "../utils/GenRandomItem";
-import { combatEvent, generationEvent } from '../EventBus';
+import { combatEvent } from '../EventBus';
 import { ChunkManager } from "./ChunkManager";
 import { showToast } from "./ToastManager";
 import { EnemyData } from "../types/GameTypes";
@@ -70,9 +70,9 @@ export class EntityManager {
                     if (attempts >= maxAttempts) {
                         break;
                     }
-                } while (this.chunkManager.getMapAt(globalX, globalY) !== 0);
+                } while (this.getMapAtWithEnemyCollision(globalX, globalY) !== 0);
 
-                if (this.chunkManager.getMapAt(globalX, globalY) !== 0) {
+                if (this.getMapAtWithEnemyCollision(globalX, globalY) !== 0) {
                     continue;
                 }
 
@@ -81,7 +81,7 @@ export class EntityManager {
                     globalX,
                     globalY,
                     this.generateRandomEnemy({ x: globalX, y: globalY }),
-                    this.chunkManager.getMapAt.bind(this.chunkManager)
+                    (x: number, y: number) => this.getMapAtWithEnemyCollision(x, y)
                 );
 
                 this.enemies.set(`${chunkX},${chunkY},${i}`, enemy);
@@ -104,6 +104,9 @@ export class EntityManager {
     }
 
     handleInteractions(playerPos: { x: number; y: number }) {
+        // Don't process enemy interactions if combat is already active
+        if (this.isCombatActive) return;
+
         this.enemies.forEach((enemy, key) => {
             const enemyPos = enemy.getPos();
             const playerPos = playerDataManager.getPos();
@@ -112,15 +115,20 @@ export class EntityManager {
             if (hitbox) {
                 hitbox.setPosition(enemyPos.x * 16 + 8, enemyPos.y * 16 + 8);
             }
-            if (playerPos.x === enemyPos.x && playerPos.y === enemyPos.y) {
+            if (playerPos.x === enemyPos.x && playerPos.y === enemyPos.y && !this.isCombatActive) {
+                this.isCombatActive = true; // Set combat active immediately
                 this.gameScene.scene.pause("GameScene");
                 this.gameScene.scene.launch("CombatScene", {
                     player: playerDataManager.getPlayerData(),
                     enemyData: enemy.getEnemyData(),
                 });
 
-                const handleCombatEnd = ({ result }: { result: "victory" | "defeat" | "fled" }) => {
+                const handleCombatEnd = ({ result, penaltyMessage }: { result: "victory" | "defeat" | "fled", penaltyMessage?: string }) => {
                     console.log(`GameScene: combatEnd received with result: ${result}`);
+
+                    // Always reset combat state first
+                    this.isCombatActive = false;
+
                     if (result === "victory") {
                         enemy.destroy();
                         this.enemies.delete(key);
@@ -129,13 +137,28 @@ export class EntityManager {
                             hitbox.destroy();
                             this.enemyHitboxes.delete(key);
                         }
+                    } else if (result === "defeat") {
+                        // Show death penalty message if provided
+                        if (penaltyMessage) {
+                            showToast.error("Defeated!", 5000);
+                            // Add a second toast for the penalty details
+                            setTimeout(() => showToast.error(penaltyMessage, 7000), 500);
+                        } else {
+                            showToast.error("Defeated!", 3000);
+                        }
+                        // Move player away from enemy after a short delay to ensure proper positioning
+                        setTimeout(() => {
+                            this.movePlayerAwayFromEnemy(enemyPos);
+                        }, 100);
                     } else if (result === "fled") {
                         // When player flees, teleport them away from the enemy
-                        this.movePlayerAwayFromEnemy(enemyPos);
+                        setTimeout(() => {
+                            this.movePlayerAwayFromEnemy(enemyPos);
+                        }, 100);
                     }
+
                     this.gameScene.scene.resume("GameScene");
                     this.gameScene.scene.stop("CombatScene"); // Redundant but safe
-                    this.isCombatActive = false;
                     combatEvent.off("combatEnd", handleCombatEnd); // Use combatEvent
                 };
 
@@ -301,7 +324,7 @@ export class EntityManager {
 
             // Check if the new position is valid (not a wall or occupied)
             if (this.chunkManager.getMapAt(newX, newY) === 0) { // 0 == ok
-                // Update player position
+                // Update player position (using full update since this is a significant game event)
                 playerDataManager.updatePlayerData({ position: { x: newX, y: newY } });
                 // Show a message to the player
                 showToast.congrats("Escaped!", "You fled to safety");
@@ -335,6 +358,23 @@ export class EntityManager {
 
     getEntities() {
         return { enemies: this.enemies, chests: this.chests };
+    }
+
+    // Check map collision including enemy positions to prevent enemies from stacking
+    private getMapAtWithEnemyCollision(x: number, y: number): number {
+        // First check if it's a wall
+        const mapTile = this.chunkManager.getMapAt(x, y);
+        if (mapTile !== 0) return mapTile; // Wall or obstacle
+
+        // Then check if any enemy is already at this position
+        for (const [, enemy] of this.enemies) {
+            const enemyPos = enemy.getPos();
+            if (enemyPos.x === x && enemyPos.y === y) {
+                return 1; // Treat enemy position as blocked
+            }
+        }
+
+        return 0; // Position is free
     }
 
 }
